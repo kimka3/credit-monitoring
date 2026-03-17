@@ -1,1 +1,28 @@
+name: Daily Credit Monitor
 
+on:
+  schedule:
+    # 매일 한국시간 08:30 = UTC 23:30 (전날)
+    - cron: '30 23 * * *'
+  workflow_dispatch:  # 수동 실행 버튼도 추가
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests anthropic
+
+      - name: Run monitor
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python credit_monitor_daily.py
