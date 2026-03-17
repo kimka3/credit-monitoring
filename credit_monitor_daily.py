@@ -3,7 +3,7 @@ import subprocess; subprocess.run(["pip","install","-q","anthropic"])
 # ============================================================
 # 신용등급 모니터링 — 3사 통합 최종 코드 (v3)
 # ============================================================
-
+import os
 # --- API 키 설정 ---
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY","")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN","")
