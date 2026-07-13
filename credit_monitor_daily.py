@@ -1,7 +1,12 @@
 import subprocess; subprocess.run(["pip","install","-q","anthropic"])
 
 # ============================================================
-# 신용등급 모니터링 — 3사 통합 최종 코드 (v3)
+# 신용등급 모니터링 — 3사 통합 최종 코드 (v4)
+# 변경사항 (v3 -> v4):
+#  1. 한신평: 고정 컬럼 인덱스 -> 헤더 기반 컬럼 매핑 (ABS 등 섹션별 구조 차이 대응)
+#  2. NICE: 필수 파라미터 추가 (strDate/endDate/ratingGubn=RO 등) — 파라미터 없이는 빈 결과 반환됨
+#  3. NICE: 채권(10컬럼)/기업어음(5컬럼)/기업신용평가(7컬럼) 섹션별 행 길이 분기
+#  4. "수집 실패"와 "변동 없음"을 구분해서 알림 (에러 발생 시 텔레그램으로 에러 통지)
 # ============================================================
 import os
 # --- API 키 설정 ---
@@ -39,7 +44,7 @@ class TableParser(HTMLParser):
         if self._in: self._cell += data
 
 def is_valid_rating(s):
-    """실제 신용등급인지 확인 (숫자, 날짜, 헤더 텍스트 제외)"""
+    """실제 신용등급인지 확인 (숫자, 날짜, 헤더 텍스트 제외). 'AAA (sf)' 형태 지원."""
     if not s: return False
     base = s.replace("(sf)","").replace("보증","").strip()
     return base in RATING_GRADES
@@ -48,8 +53,22 @@ def is_date(s):
     """날짜 형식인지 확인"""
     return bool(re.match(r'\d{4}\.\d{2}\.\d{2}', s))
 
+def dedupe_and_filter_changes(results):
+    """기업 단위 중복 제거 + 등급/전망 변동건만 반환 (공통 로직)"""
+    seen, changed = set(), []
+    for d in results:
+        key = (d["company"], d["prev_rating"], d["new_rating"],
+               d["prev_outlook"], d["new_outlook"])
+        if key in seen: continue
+        seen.add(key)
+        if (d.get("change_code") and d["change_code"] not in ("", "0")) or \
+           (d["prev_rating"] and d["new_rating"] and d["prev_rating"] != d["new_rating"]) or \
+           (d["prev_outlook"] and d["new_outlook"] and d["prev_outlook"] != d["new_outlook"]):
+            changed.append(d)
+    return changed
+
 # ============================================================
-#  한국기업평가 (AJAX API) — 취소 제외
+#  한국기업평가 (AJAX API) — 취소 제외  [v3과 동일, 정상 작동 확인됨]
 # ============================================================
 def fetch_kr(session):
     print("  [한국기업평가] 수집 중...")
@@ -85,7 +104,7 @@ def fetch_kr(session):
         new_rating = (item.get("CUR_GRD_NM_ORG") or "").strip()
         prev_rating = (item.get("RBF_GRD_NM_ORG") or "").strip()
 
-        # ★ 취소 건 제외
+        # 취소 건 제외
         if not new_rating or new_rating == "취소":
             continue
 
@@ -101,152 +120,151 @@ def fetch_kr(session):
             "change_code": item.get("GR_CHN_DVCD", "0"),
         })
 
-    # 기업 단위 중복 제거
-    seen = set()
-    unique = []
-    for d in results:
-        key = (d["company"], d["prev_rating"], d["new_rating"], d["prev_outlook"], d["new_outlook"])
-        if key not in seen:
-            seen.add(key)
-            unique.append(d)
-
-    # 실제 변동건
-    changed = [d for d in unique
-               if d["change_code"] != "0"
-               or (d["prev_rating"] and d["new_rating"] and d["prev_rating"] != d["new_rating"])
-               or (d["prev_outlook"] and d["new_outlook"] and d["prev_outlook"] != d["new_outlook"])]
-
+    changed = dedupe_and_filter_changes(results)
     print(f"  [한국기업평가] 전체 {len(all_items)}건 -> 취소 제외 {len(results)}건 -> 변동 {len(changed)}건")
     return changed
 
 # ============================================================
-#  한국신용평가 (HTML) — 헤더/잘못된 행 필터링
+#  한국신용평가 (HTML) — v4: 헤더 기반 컬럼 매핑
+#  페이지에 채권/CP/ABS/신용공여 등 컬럼 구조가 다른 테이블이 혼재하므로
+#  '회사명'이 포함된 헤더 행을 만날 때마다 컬럼 위치를 갱신한다.
 # ============================================================
 def fetch_kis(session):
     print("  [한국신용평가] 수집 중...")
     r = session.get("https://www.kisrating.com/ratings/hot_disclosure.do", timeout=15)
     r.encoding = "utf-8"
-    p = TableParser(); p.feed(r.text); rows = p.rows
+    p = TableParser(); p.feed(r.text)
 
-    results = []
-    i = 0
-    while i < len(rows):
-        row = rows[i]
-        if len(row) >= 8:
-            company = row[1].strip()
-            prev_r = row[4].strip()
-            new_r = row[6].strip()
-            date = row[7].strip()
+    results, colmap, last_entry = [], None, None
+    for row in p.rows:
+        cells = [c.strip() for c in row]
 
-            # ★ 헤더 행 제외 (회사명, 직전등급, 현재등급 등)
-            if company in ("회사명", "", "Outlook") or \
-               prev_r in ("직전등급", "직전", "평가종류", "발행액(억원)", "공여기관", "발행액(억원)(회사명)") or \
-               new_r in ("현재등급", "현재", "평가일", "만기일", "약정만료일"):
-                i += 1
-                continue
+        # 헤더 행이면 컬럼 매핑 갱신
+        if "회사명" in cells:
+            colmap = {}
+            for i, c in enumerate(cells):
+                if c == "회사명": colmap["company"] = i
+                elif c in ("직전등급", "직전"): colmap["prev"] = i
+                elif c in ("현재등급", "현재"): colmap["cur"] = i
+                elif c == "평가일": colmap["date"] = i
+                elif c == "평가종류": colmap["type"] = i
+            last_entry = None
+            continue
 
-            # ★ 날짜 컬럼에 실제 날짜가 있는지 확인
-            if not is_date(date):
-                i += 1
-                continue
+        # Outlook 행(짧은 행)이면 직전 데이터 행에 병합
+        if len(cells) <= 4:
+            if last_entry and len(cells) >= 3:
+                last_entry["prev_outlook"] = cells[0]
+                last_entry["new_outlook"] = cells[2]
+            continue
 
-            # ★ 등급이 실제 신용등급인지 확인 (숫자나 "본" 같은 것 제외)
-            new_is_rating = is_valid_rating(new_r)
-            prev_is_rating = is_valid_rating(prev_r) or prev_r == ""
+        if not colmap or "cur" not in colmap or "company" not in colmap:
+            continue
+        if max(colmap.values()) >= len(cells):
+            continue
 
-            if not new_is_rating:
-                i += 1
-                continue
+        company = cells[colmap["company"]]
+        new_r = cells[colmap["cur"]]
+        prev_r = cells[colmap["prev"]] if "prev" in colmap else ""
+        date = cells[colmap["date"]] if "date" in colmap else ""
 
-            entry = {
-                "source": "한국신용평가",
-                "company": company,
-                "prev_rating": prev_r if prev_is_rating else "",
-                "new_rating": new_r,
-                "prev_outlook": "",
-                "new_outlook": "",
-                "date": date,
-                "eval_type": row[3].strip(),
-                "change_code": "",
-            }
-            # 다음 행이 Outlook 행(3컬럼)이면 병합
-            if i + 1 < len(rows) and len(rows[i+1]) <= 4:
-                ol = rows[i+1]
-                entry["prev_outlook"] = ol[0].strip() if len(ol) > 0 else ""
-                entry["new_outlook"] = ol[2].strip() if len(ol) > 2 else ""
-                i += 2
-            else:
-                i += 1
+        if not company or not is_valid_rating(new_r) or not is_date(date):
+            last_entry = None
+            continue
 
-            results.append(entry)
-        else:
-            i += 1
+        entry = {
+            "source": "한국신용평가",
+            "company": company,
+            "prev_rating": prev_r if is_valid_rating(prev_r) else "",
+            "new_rating": new_r,
+            "prev_outlook": "",
+            "new_outlook": "",
+            "date": date,
+            "eval_type": cells[colmap["type"]] if "type" in colmap else "",
+            "change_code": "",
+        }
+        results.append(entry)
+        last_entry = entry
 
-    # 기업 단위 중복 제거 + 변동건만
-    seen = set()
-    changed = []
-    for d in results:
-        key = (d["company"], d["prev_rating"], d["new_rating"], d["prev_outlook"], d["new_outlook"])
-        if key in seen: continue
-        seen.add(key)
-        if (d["prev_rating"] and d["new_rating"] and d["prev_rating"] != d["new_rating"]) or \
-           (d["prev_outlook"] and d["new_outlook"] and d["prev_outlook"] != d["new_outlook"]):
-            changed.append(d)
-
+    changed = dedupe_and_filter_changes(results)
     print(f"  [한국신용평가] 전체 {len(results)}건 -> 변동 {len(changed)}건")
     return changed
 
 # ============================================================
-#  NICE신용평가 (HTML 테이블)
+#  NICE신용평가 (HTML) — v4: 필수 파라미터 추가 + 섹션별 행 길이 분기
+#  파라미터 없이 호출하면 항상 빈 결과가 반환됨 (2026.07 확인).
+#  ratingGubn: R=등급변동, O=전망변동, RO=둘 다
 # ============================================================
 def fetch_nice(session):
     print("  [NICE신용평가] 수집 중...")
-    r = session.get("https://www.nicerating.com/disclosure/ratingChangeList.do", timeout=15)
+    r = session.get(
+        "https://www.nicerating.com/disclosure/ratingChangeList.do",
+        params=[("today", TODAY), ("cmpCd", ""),
+                ("strDate", WEEK_AGO), ("endDate", TODAY),
+                ("ratingGubn", "RO"), ("searchType", "0")],
+        timeout=15)
     r.encoding = "utf-8"
-    p = TableParser(); p.feed(r.text); rows = p.rows
+    p = TableParser(); p.feed(r.text)
 
     results = []
-    for row in rows[2:]:
-        if len(row) < 8: continue
-        results.append({
-            "source": "NICE신용평가",
-            "company": row[0],
-            "prev_rating": row[5],
-            "new_rating": row[7] if len(row) > 7 else "",
-            "prev_outlook": row[6] if len(row) > 6 else "",
-            "new_outlook": row[8] if len(row) > 8 else "",
-            "date": row[9] if len(row) > 9 else (row[-1] if len(row) > 8 else ""),
-            "eval_type": row[4],
-            "change_code": "",
-        })
+    for row in p.rows:
+        cells = [c.strip() for c in row]
 
-    seen = set()
-    changed = []
-    for d in results:
-        key = (d["company"], d["prev_rating"], d["new_rating"], d["prev_outlook"], d["new_outlook"])
-        if key in seen: continue
-        seen.add(key)
-        if d["prev_rating"] != d["new_rating"] or \
-           (d["prev_outlook"] and d["new_outlook"] and d["prev_outlook"] != d["new_outlook"]):
-            changed.append(d)
+        # 헤더/서브헤더 행 스킵
+        if "기업명" in cells or cells[:2] == ["등급", "전망"]:
+            continue
+        # 마지막 컬럼이 날짜가 아니면 데이터 행이 아님
+        if not cells or not is_date(cells[-1]):
+            continue
 
+        n = len(cells)
+        if n == 10:
+            # 채권: 기업명,회차,상환순위,종류,평정,직전등급,직전전망,현재등급,현재전망,확정일
+            entry = dict(company=cells[0], eval_type=cells[4],
+                         prev_rating=cells[5], prev_outlook=cells[6],
+                         new_rating=cells[7], new_outlook=cells[8], date=cells[9])
+        elif n == 7:
+            # 기업신용평가/보험금지급능력(추정): 기업명,평정,직전등급,직전전망,현재등급,현재전망,확정일
+            entry = dict(company=cells[0], eval_type=cells[1],
+                         prev_rating=cells[2], prev_outlook=cells[3],
+                         new_rating=cells[4], new_outlook=cells[5], date=cells[6])
+        elif n == 5:
+            # 기업어음/전단채: 기업명,평정,직전등급,현재등급,확정일 (전망 없음)
+            entry = dict(company=cells[0], eval_type=cells[1],
+                         prev_rating=cells[2], prev_outlook="",
+                         new_rating=cells[3], new_outlook="", date=cells[4])
+        else:
+            continue
+
+        # 등급 유효성 검증 (헤더 잔재/잘못된 행 방어)
+        if not is_valid_rating(entry["new_rating"]):
+            continue
+        if entry["prev_rating"] and not is_valid_rating(entry["prev_rating"]):
+            entry["prev_rating"] = ""
+
+        entry.update(source="NICE신용평가", change_code="")
+        results.append(entry)
+
+    changed = dedupe_and_filter_changes(results)
     print(f"  [NICE신용평가] 전체 {len(results)}건 -> 변동 {len(changed)}건")
     return changed
 
 # ============================================================
-#  통합 수집
+#  통합 수집 — v4: 에러를 별도로 수집해서 '수집 실패'와 '변동 없음' 구분
 # ============================================================
 def scrape_all():
     session = requests.Session()
     session.headers.update(HEADERS)
-    all_data = []
+    all_data, errors = [], []
     for fetcher in [fetch_kr, fetch_kis, fetch_nice]:
         try:
             all_data.extend(fetcher(session))
         except Exception as e:
-            print(f"  에러: {e}")
-    print(f"\n  === 3사 합계: {len(all_data)}건 ===")
-    return all_data
+            name = fetcher.__name__
+            print(f"  에러 [{name}]: {type(e).__name__}: {e}")
+            errors.append(f"{name}: {type(e).__name__}: {e}")
+    print(f"\n  === 3사 합계: 변동 {len(all_data)}건, 에러 {len(errors)}건 ===")
+    return all_data, errors
 
 # ============================================================
 #  Claude 분석
@@ -306,16 +324,27 @@ def send_tg(msg):
         except Exception as e:
             print(f"  텔레그램 에러: {e}")
 
-print("✅ 3사 통합 최종 코드 (v3) 로드 완료!")
+# ============================================================
+#  실행
+# ============================================================
+print("✅ 3사 통합 최종 코드 (v4) 로드 완료!")
 print(f"   수집 기간: {WEEK_AGO} ~ {TODAY}")
-print("   한국기업평가: 취소 건 제외")
-print("   한국신용평가: 헤더/비등급 행 필터링")
+print("   한신평: 헤더 기반 컬럼 매핑 (ABS 섹션 포함)")
+print("   NICE: 기간/ratingGubn=RO 파라미터 적용")
 print(f"📊 신용등급 모니터링 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 print("="*60)
 print("\n[1/3] 3사 데이터 수집...")
-data = scrape_all()
+data, errors = scrape_all()
+
 print("\n[2/3] AI 분석...")
-briefing = analyze(data) if data else "수집된 데이터가 없습니다."
+# v4: '변동 없음'과 '수집 실패'를 구분
+if errors:
+    err_note = "⚠️ 일부 수집 실패:\n" + "\n".join(f"  - {e}" for e in errors)
+    briefing = analyze(data)  # 수집된 것이라도 분석
+    briefing = briefing + "\n\n" + err_note
+else:
+    briefing = analyze(data)  # data가 비어도 '변동 없음' 메시지가 정상 출력됨
+
 print("\n[3/3] 알림 전송...")
 send_tg(briefing)
 print("\n✅ 완료!")
