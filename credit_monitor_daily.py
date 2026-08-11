@@ -202,7 +202,7 @@ def fetch_nice(session):
         params=[("today", TODAY), ("cmpCd", ""),
                 ("strDate", WEEK_AGO), ("endDate", TODAY),
                 ("ratingGubn", "RO"), ("searchType", "0")],
-        timeout=15)
+        timeout=(30,60))
     r.encoding = "utf-8"
     p = TableParser(); p.feed(r.text)
 
