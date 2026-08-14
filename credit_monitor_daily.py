@@ -1,12 +1,14 @@
 import subprocess; subprocess.run(["pip","install","-q","anthropic"])
 
 # ============================================================
-# 신용등급 모니터링 — 3사 통합 최종 코드 (v5)
-# 변경사항 (v4 -> v5):
-#  1. 3회 재시도 로직 추가 (30초 간격) — NICE 간헐적 ConnectTimeout 대응
+# 신용등급 모니터링 — 3사 통합 최종 코드 (v6)
+# 변경사항 (v5 -> v6):
+#  - 취소 건 전면 제외 (v5의 장기등급 취소 표시가 증권사 ELB/DLB 회차 상환
+#    노이즈만 대량 유입시켜 롤백)
+# (v4 -> v5 누적)
+#  1. 3회 재시도 로직 (30초 간격) — NICE 간헐적 ConnectTimeout 대응
 #  2. NICE만 14일 조회 — 하루 실패해도 다음 날 자동으로 누락분 복구
 #  3. 타임아웃 (30, 60)으로 상향
-#  4. 취소 건 분리: 단기등급(A1~A3-) 취소는 노이즈로 제외, 장기등급 취소는 별도 표시
 # ============================================================
 import os
 # --- API 키 설정 ---
@@ -113,12 +115,13 @@ def fetch_kr(session):
         if not new_rating:
             continue
 
-        is_cancel = (new_rating == "취소")
-        if is_cancel:
-            # 단기등급(ABCP/전단채 등) 취소는 만기상환성 노이즈 -> 제외
-            if prev_rating in SHORT_TERM_GRADES or not prev_rating:
-                n_cancel_skipped += 1
-                continue
+        # 취소 건 전면 제외 (장기/단기 불문)
+        # 실데이터 확인 결과, 증권사 AA 등급 취소도 대부분 ELB/DLB 개별 회차
+        # 만기상환에 따른 등급 소멸이지 회사 등급 취소가 아님 -> 전량 노이즈
+        if new_rating == "취소":
+            n_cancel_skipped += 1
+            continue
+        is_cancel = False
 
         results.append({
             "source": "한국기업평가",
@@ -134,7 +137,7 @@ def fetch_kr(session):
         })
 
     changed = dedupe_and_filter_changes(results)
-    print(f"  [한국기업평가] 전체 {len(all_items)}건 -> 단기취소 제외 {n_cancel_skipped}건 -> 변동 {len(changed)}건")
+    print(f"  [한국기업평가] 전체 {len(all_items)}건 -> 취소 제외 {n_cancel_skipped}건 -> 변동 {len(changed)}건")
     return changed
 
 # ============================================================
@@ -306,7 +309,7 @@ def analyze(changes):
                 "형식:\n📊 [날짜] 신용등급 변동 브리핑\n"
                 "■ 부도/등급 하향 (⚠️)\n  - 업체명 | 변경전→변경후 | 출처\n"
                 "■ 등급 상향\n  - 업체명 | 변경전→변경후 | 출처\n"
-                "■ Outlook 변경\n■ 등급 취소\n■ 신탁 포트폴리오 시사점 (2-3줄)\n"
+                "■ Outlook 변경\n■ 신탁 포트폴리오 시사점 (2-3줄)\n"
                 "빈 카테고리는 생략. 2000자 이내."}])
         return r.content[0].text
     except Exception as e:
@@ -348,7 +351,7 @@ def send_tg(msg):
 # ============================================================
 #  실행
 # ============================================================
-print("✅ 3사 통합 코드 (v5) 로드 완료!")
+print("✅ 3사 통합 코드 (v6) 로드 완료!")
 print(f"   수집 기간: {WEEK_AGO} ~ {TODAY} (NICE: {NICE_FROM} ~ {TODAY})")
 print("   재시도 3회 / 타임아웃 (30,60)")
 print(f"📊 신용등급 모니터링 — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
