@@ -2,27 +2,81 @@ name: Daily Credit Monitor
 
 on:
   schedule:
-    # 매일 한국시간 08:30 = UTC 23:30 (전날)
-    - cron: '30 23 * * *'
-  workflow_dispatch:  # 수동 실행 버튼도 추가
+    # 23:27 UTC = 다음날 08:27 KST.
+    # 정각·반각(:00, :30)은 전 세계 요청이 몰려 대기열이 길어지므로 어긋내 둔다.
+    # 그래도 예약 실행은 "그 시각에 대기열에 넣는다"는 뜻이라 지연은 남는다.
+    - cron: '27 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write        # 전송 이력(state/sent.json) 커밋에 필요
+
+concurrency:
+  group: credit-monitor
+  cancel-in-progress: false   # 중복 실행 방지. 겹치면 같은 건이 두 번 발송된다.
 
 jobs:
   monitor:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 20        # 재시도(3회 x 30초 대기)를 감안해도 충분
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
+          cache: pip
 
-      - name: Install dependencies
-        run: pip install requests anthropic
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
 
-      - name: Run monitor
+      - name: 모니터 실행
+        id: run
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python credit_monitor_daily.py
+
+      # 전송에 성공한 건만 이력에 쌓인다. 이걸 커밋해 둬야 내일 실행에서
+      # 같은 건이 다시 발송되지 않는다. 실행이 실패했어도 그때까지 보낸
+      # 건은 기록으로 남겨야 하므로 always() 로 돌린다.
+      - name: 전송 이력 커밋
+        if: always()
+        run: |
+          if [ ! -f state/sent.json ]; then
+            echo "저장된 이력이 없습니다."; exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/sent.json
+          if git diff --staged --quiet; then
+            echo "변경 없음."; exit 0
+          fi
+          git commit -m "Update sent history ($(TZ=Asia/Seoul date +%Y-%m-%d))"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+          git push
+
+      # 스크립트가 통째로 죽으면 텔레그램이 안 간다. 침묵은 '변동 없음'과
+      # 구분되지 않으므로 실패 자체를 알린다.
+      - name: 실패 알림
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TG_TOKEN="$(printf '%s' "$TG_TOKEN" | tr -d '[:space:]')"
+          TG_CHAT="$(printf '%s' "$TG_CHAT" | tr -d '[:space:]')"
+          if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+            echo "텔레그램 시크릿이 없어 실패 알림을 건너뜁니다."; exit 0
+          fi
+          TEXT="⚠️ [신용등급 모니터링] 실행 실패
+          브리핑이 발송되지 않았습니다. 등급 변동이 없다는 뜻이 아닙니다.
+          $RUN_URL"
+          curl -sS -o /dev/null -X POST \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "disable_web_page_preview=true" || true
