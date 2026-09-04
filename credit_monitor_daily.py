@@ -16,9 +16,10 @@ v6 -> v7 변경
   6. 모델 claude-sonnet-4-20250514 -> claude-opus-5.
   7. 런타임 pip install 제거 (requirements.txt 로 이동).
   8. 등급표에 CCC+ / CCC- 추가. 없으면 해당 등급 건이 조용히 버려진다.
-  9. 한국신용평가 리포트 PDF 를 텔레그램에 첨부. 회사명과 발행일이
-     정확히 맞는 것만 붙인다. 한국기업평가는 회원 로그인이 필요하고
-     NICE 는 목록에 PDF 링크 자체가 없어 대상이 아니다.
+  9. 3사 리포트 PDF 를 텔레그램에 첨부. 회사명과 발행일이 정확히 맞는
+     것만 붙인다. 한국기업평가는 평가의견(신용평가요지)까지 무료이고
+     전체 평가리포트만 유료다. NICE 는 목록이 아니라 기업 상세 페이지에
+     의견서가 있다.
 """
 from __future__ import annotations
 
@@ -78,6 +79,9 @@ KIS_PDF_RE = re.compile(
 
 MAX_PDF_PER_ITEM = 3     # 한 회사·한 날짜에 회차별 리포트가 여럿 붙는 경우가 있다
 MAX_PDF_PER_RUN = 10     # 텔레그램 도배 방지
+
+KR_LIST_URL = "https://www.korearatings.com/cms/frCmnCon/index.do?MENU_ID=360"
+KR_DOWN_URL = "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do"
 
 NICE_LIST_URL = "https://www.nicerating.com/disclosure/ratingChangeList.do"
 NICE_COMP_URL = "https://www.nicerating.com/disclosure/companyGradeInfo.do"
@@ -245,8 +249,7 @@ def save_state(state: dict) -> None:
 # --------------------------------------------------------------------------
 def fetch_kr(session):
     print("  [한국기업평가] 수집 중...")
-    r0 = session.get("https://www.korearatings.com/cms/frCmnCon/index.do?MENU_ID=360",
-                     timeout=TIMEOUT)
+    r0 = session.get(KR_LIST_URL, timeout=TIMEOUT)
     r0.raise_for_status()
 
     params = [
@@ -258,7 +261,7 @@ def fetch_kr(session):
     r = session.post(
         "https://www.korearatings.com/ajaxf/frDisclosureSvc/getRatingDisclosureList.do",
         headers={
-            "Referer": "https://www.korearatings.com/cms/frCmnCon/index.do?MENU_ID=360",
+            "Referer": KR_LIST_URL,
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
             "X-Requested-With": "XMLHttpRequest",
         },
@@ -296,11 +299,37 @@ def fetch_kr(session):
             "date": item.get("EVAL_DT") or item.get("DSCLS_DTTM") or "",
             "eval_type": (item.get("EVAL_DIV_NM") or "").strip(),
             "change_code": item.get("GR_CHN_DVCD", "0"),
+            # 평가의견(신용평가요지) 다운로드에 필요한 값들
+            "opn_file": (item.get("RTNG_OPN_FILE_NM") or "").strip(),
+            "svc_id": (item.get("SVC_ID") or "").strip(),
+            "eval_seq": item.get("EVAL_SEQNO"),
+            "comp_cd": (item.get("COMP_CD") or "").strip(),
         })
 
     changed = filter_changes(results)
-    print(f"  [한국기업평가] 원본 {len(all_items)}건 -> 취소 제외 {n_cancel}건 -> 변동 {len(changed)}건")
+    attach_kr_pdfs(changed)
+    n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
+    print(f"  [한국기업평가] 원본 {len(all_items)}건 -> 취소 제외 {n_cancel}건 "
+          f"-> 변동 {len(changed)}건, 리포트 {n_pdf}개 매칭")
     return changed
+
+
+def attach_kr_pdfs(changes) -> None:
+    """평가의견 파일을 변동 건에 붙인다. 목록 응답에 값이 다 들어 있어 추가 요청이 없다.
+
+    유료인 것은 '평가리포트'(RPT_FILE_NM) 쪽이고, 평가의견(RTNG_OPN_FILE_NM,
+    rptNo=03)은 로그인 없이 받아진다. 권한 확인 페이지가 유료 안내문을 늘
+    함께 내려주지만 실제로는 곧바로 다운로드를 실행한다.
+    """
+    for e in changes:
+        e.setdefault("pdfs", [])
+        if not (e.get("opn_file") and e.get("svc_id") and e.get("eval_seq")):
+            continue
+        e["pdfs"].append({
+            "src": "kr", "file": f"{e['company']}_{e.get('date', '')}.pdf",
+            "kind": "평가의견", "encFileNm": e["opn_file"], "encSvcSeqNo": e["svc_id"],
+            "evalNo": str(e["eval_seq"]), "compCd": e.get("comp_cd", ""),
+        })
 
 
 # --------------------------------------------------------------------------
@@ -621,6 +650,22 @@ def download_kis_pdf(session, meta) -> bytes:
     return r.content
 
 
+def download_kr_pdf(session, meta) -> bytes:
+    # 서버가 쿼리스트링을 직접 파싱한다. 암호화 파일명에 들어 있는 '='·'@' 를
+    # 퍼센트 인코딩하면 값이 달라져 "파일이 존재하지 않습니다" 가 돌아온다.
+    # 사이트 JS 도 인코딩 없이 이어붙이므로 그대로 맞춘다.
+    url = (KR_DOWN_URL + "?dumm=asdf"
+           + "&encFileNm=" + meta["encFileNm"]
+           + "&encSvcSeqNo=" + meta["encSvcSeqNo"]
+           + "&evalNo=" + meta["evalNo"]
+           + "&rptNo=03&fileName=&compCd=" + meta["compCd"] + "&compNm=")
+    r = session.get(url, headers={"Referer": KR_LIST_URL}, timeout=(30, 120))
+    r.raise_for_status()
+    if not r.content.startswith(b"%PDF"):
+        raise RuntimeError(f"PDF 가 아닙니다 ({len(r.content)}바이트)")
+    return r.content
+
+
 def download_nice_pdf(session, meta) -> bytes:
     r = session.get(NICE_DOWN_URL, params={"docId": meta["docId"]},
                     headers={"Referer": NICE_COMP_URL}, timeout=(30, 120))
@@ -631,8 +676,11 @@ def download_nice_pdf(session, meta) -> bytes:
 
 
 def download_pdf(session, meta) -> bytes:
-    if meta.get("src") == "nice":
+    src = meta.get("src")
+    if src == "nice":
         return download_nice_pdf(session, meta)
+    if src == "kr":
+        return download_kr_pdf(session, meta)
     return download_kis_pdf(session, meta)
 
 
@@ -654,8 +702,8 @@ def send_reports(session, changes) -> int:
     브리핑은 이미 나갔으므로 여기서 실패해도 전체를 실패로 만들지 않는다.
     리포트를 못 받은 것과 브리핑이 안 간 것은 심각도가 다르다.
 
-    한국신용평가와 NICE 는 로그인 없이 받아진다. 한국기업평가는 받을 수 없다 —
-    권한 확인 엔드포인트(frReportPayUserChk.do)가 "유료 회원사 가입" 을 요구한다.
+    3사 모두 로그인 없이 받아진다. 한국기업평가는 평가의견(신용평가요지)까지만
+    무료이고, 전체 평가리포트는 유료 회원 전용이라 대상에서 뺐다.
     """
     jobs = [(c, p) for c in changes for p in (c.get("pdfs") or [])][:MAX_PDF_PER_RUN]
     if not jobs:
