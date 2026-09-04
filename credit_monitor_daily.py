@@ -79,6 +79,19 @@ KIS_PDF_RE = re.compile(
 MAX_PDF_PER_ITEM = 3     # 한 회사·한 날짜에 회차별 리포트가 여럿 붙는 경우가 있다
 MAX_PDF_PER_RUN = 10     # 텔레그램 도배 방지
 
+NICE_LIST_URL = "https://www.nicerating.com/disclosure/ratingChangeList.do"
+NICE_COMP_URL = "https://www.nicerating.com/disclosure/companyGradeInfo.do"
+NICE_DOWN_URL = "https://www.nicerating.com/common/fileDown.do"
+
+# 목록 행의 회사명 링크: goView('CORP', '5207805') — 상세 페이지 키를 여기서만 얻는다.
+NICE_CMP_RE = re.compile(r"goView\(\s*'\w+'\s*,\s*'(\d+)'\s*\)\"\s*>([^<]+)</a>")
+
+# 상세 페이지의 파일 버튼: fncFileDown('UUID') 뒤 img 의 alt 로 종류가 갈린다.
+# ico_file01_1 = 의견서, ico_file04 = 재무. 등급 근거가 담긴 의견서만 첨부한다.
+NICE_PDF_RE = re.compile(
+    r"fncFileDown\('([0-9a-fA-F-]{36})'\)\"?\s*>\s*<img[^>]*alt=\"([^\"]*)\"")
+NICE_PDF_KIND = "의견서"
+
 
 class StructureError(RuntimeError):
     """페이지에서 행을 하나도 못 뽑은 경우.
@@ -387,7 +400,7 @@ def fetch_kis(session):
 def fetch_nice(session):
     print("  [NICE신용평가] 수집 중...")
     r = session.get(
-        "https://www.nicerating.com/disclosure/ratingChangeList.do",
+        NICE_LIST_URL,
         params=[("today", TODAY), ("cmpCd", ""),
                 ("strDate", NICE_FROM), ("endDate", TODAY),
                 ("ratingGubn", "RO"), ("searchType", "0")],
@@ -398,6 +411,10 @@ def fetch_nice(session):
     p.feed(r.text)
     if not p.rows:
         raise StructureError("표 행을 하나도 찾지 못했습니다 (페이지 구조 변경 또는 차단)")
+
+    # 상세 페이지 키(cmpCd)는 회사명 링크에만 들어 있어 표 텍스트로는 얻을 수 없다.
+    # 리포트를 받으려면 이 키가 필요하다.
+    cmp_codes = {nm.strip(): cd for cd, nm in NICE_CMP_RE.findall(r.text)}
 
     results, n_unknown = [], 0
     for row in p.rows:
@@ -429,7 +446,8 @@ def fetch_nice(session):
             continue
         if e["prev_rating"] and not is_valid_rating(e["prev_rating"]):
             e["prev_rating"] = ""
-        e.update(source="NICE신용평가", change_code="")
+        e.update(source="NICE신용평가", change_code="",
+                 cmp_cd=cmp_codes.get(e["company"].strip(), ""))
         results.append(e)
 
     # 날짜로 끝나는 행은 있는데 컬럼 수가 전부 낯설다면 표가 바뀐 것이다.
@@ -437,8 +455,47 @@ def fetch_nice(session):
         raise StructureError(f"컬럼 수가 예상과 다릅니다 ({n_unknown}행, 표 구조 변경)")
 
     changed = filter_changes(results)
-    print(f"  [NICE신용평가] 원본 {len(results)}건 -> 변동 {len(changed)}건 ({NICE_FROM}~{TODAY})")
+    attach_nice_pdfs(session, changed)
+    n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
+    print(f"  [NICE신용평가] 원본 {len(results)}건 -> 변동 {len(changed)}건"
+          f", 리포트 {n_pdf}개 매칭 ({NICE_FROM}~{TODAY})")
     return changed
+
+
+def attach_nice_pdfs(session, changes) -> None:
+    """변동 건마다 기업 상세 페이지를 열어 같은 날짜의 의견서를 찾아 붙인다.
+
+    목록 페이지에는 파일 링크가 없어 회사별로 한 번씩 더 요청해야 한다.
+    첨부는 부가 기능이므로 여기서 실패해도 브리핑은 그대로 나가야 한다.
+    """
+    for e in changes:
+        e.setdefault("pdfs", [])
+        cmp_cd = e.get("cmp_cd")
+        if not cmp_cd:
+            continue
+        try:
+            r = session.get(NICE_COMP_URL, params={"cmpCd": cmp_cd},
+                            headers={"Referer": NICE_LIST_URL}, timeout=TIMEOUT)
+            r.raise_for_status()
+            r.encoding = "utf-8"
+        except Exception as exc:
+            print(f"    상세 조회 실패 {e['company']}: {type(exc).__name__}: {exc}")
+            continue
+
+        # 한 회사에 여러 등급내역이 쌓여 있다. 이번 변동 날짜가 들어간 행만 본다.
+        for block in re.findall(r"<tr[^>]*>.*?</tr>", r.text, flags=re.S):
+            if e.get("date", "") not in block:
+                continue
+            for doc_id, alt in NICE_PDF_RE.findall(block):
+                if NICE_PDF_KIND not in alt:
+                    continue
+                e["pdfs"].append({"src": "nice", "docId": doc_id,
+                                  "file": f"{e['company']}_{e.get('date', '')}.pdf",
+                                  "kind": alt.strip()})
+                break
+            if e["pdfs"]:
+                break
+        del e["pdfs"][MAX_PDF_PER_ITEM:]
 
 
 # --------------------------------------------------------------------------
@@ -564,6 +621,21 @@ def download_kis_pdf(session, meta) -> bytes:
     return r.content
 
 
+def download_nice_pdf(session, meta) -> bytes:
+    r = session.get(NICE_DOWN_URL, params={"docId": meta["docId"]},
+                    headers={"Referer": NICE_COMP_URL}, timeout=(30, 120))
+    r.raise_for_status()
+    if not r.content.startswith(b"%PDF"):
+        raise RuntimeError(f"PDF 가 아닙니다 ({len(r.content)}바이트)")
+    return r.content
+
+
+def download_pdf(session, meta) -> bytes:
+    if meta.get("src") == "nice":
+        return download_nice_pdf(session, meta)
+    return download_kis_pdf(session, meta)
+
+
 def send_tg_document(content: bytes, filename: str, caption: str) -> None:
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print(f"    (시크릿 없음 — {filename} 전송 생략)")
@@ -577,12 +649,13 @@ def send_tg_document(content: bytes, filename: str, caption: str) -> None:
 
 
 def send_reports(session, changes) -> int:
-    """등급변동 건에 매칭된 한국신용평가 리포트를 이어서 보낸다.
+    """등급변동 건에 매칭된 평가 리포트를 이어서 보낸다.
 
     브리핑은 이미 나갔으므로 여기서 실패해도 전체를 실패로 만들지 않는다.
     리포트를 못 받은 것과 브리핑이 안 간 것은 심각도가 다르다.
-    한국기업평가는 회원 로그인이 필요하고 NICE 는 목록에 링크가 없어
-    한국신용평가 건만 대상이 된다.
+
+    한국신용평가와 NICE 는 로그인 없이 받아진다. 한국기업평가는 받을 수 없다 —
+    권한 확인 엔드포인트(frReportPayUserChk.do)가 "유료 회원사 가입" 을 요구한다.
     """
     jobs = [(c, p) for c in changes for p in (c.get("pdfs") or [])][:MAX_PDF_PER_RUN]
     if not jobs:
@@ -593,7 +666,7 @@ def send_reports(session, changes) -> int:
     seen = set()
     for c, meta in jobs:
         try:
-            content = download_kis_pdf(session, meta)
+            content = download_pdf(session, meta)
             # 같은 회사·같은 날짜에 회차만 다른 리포트가 내용은 동일한 경우가
             # 잦다(실측: 3건 중 2건이 바이트 단위로 동일). 같은 파일을 여러 번
             # 보내면 채팅창만 지저분해진다.
