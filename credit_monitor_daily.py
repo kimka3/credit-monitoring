@@ -16,9 +16,13 @@ v6 -> v7 변경
   6. 모델 claude-sonnet-4-20250514 -> claude-opus-5.
   7. 런타임 pip install 제거 (requirements.txt 로 이동).
   8. 등급표에 CCC+ / CCC- 추가. 없으면 해당 등급 건이 조용히 버려진다.
+  9. 한국신용평가 리포트 PDF 를 텔레그램에 첨부. 회사명과 발행일이
+     정확히 맞는 것만 붙인다. 한국기업평가는 회원 로그인이 필요하고
+     NICE 는 목록에 PDF 링크 자체가 없어 대상이 아니다.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -63,6 +67,17 @@ RATING_GRADES = {
     "CCC+", "CCC", "CCC-", "CC", "C", "D",
     "A1", "A2+", "A2", "A2-", "A3+", "A3", "A3-",
 }
+
+
+KIS_LIST_URL = "https://www.kisrating.com/ratings/hot_disclosure.do"
+KIS_DOWN_URL = "https://www.kisrating.com/fileDown.do"
+
+# 목록 페이지의 PDF 버튼: fn_file(menuCd, gubun, 회사명, 파일명, 구분, 발행일)
+KIS_PDF_RE = re.compile(
+    r"fn_file\('([^']*)',\s*'([^']*)',\s*'([^']*)',\s*'([^']*\.pdf)',\s*'([^']*)',\s*'(\d{8})'")
+
+MAX_PDF_PER_ITEM = 3     # 한 회사·한 날짜에 회차별 리포트가 여럿 붙는 경우가 있다
+MAX_PDF_PER_RUN = 10     # 텔레그램 도배 방지
 
 
 class StructureError(RuntimeError):
@@ -222,7 +237,7 @@ def fetch_kr(session):
 # --------------------------------------------------------------------------
 def fetch_kis(session):
     print("  [한국신용평가] 수집 중...")
-    r = session.get("https://www.kisrating.com/ratings/hot_disclosure.do", timeout=TIMEOUT)
+    r = session.get(KIS_LIST_URL, timeout=TIMEOUT)
     r.raise_for_status()
     r.encoding = "utf-8"
     p = TableParser()
@@ -285,8 +300,21 @@ def fetch_kis(session):
     if colmap is None:
         raise StructureError("'회사명' 헤더를 찾지 못했습니다 (표 구조 변경)")
 
+    # 같은 페이지에 리포트 PDF 버튼이 함께 있다. 회사명과 발행일이 정확히
+    # 맞는 것만 붙인다. 최근 것을 아무거나 붙이면 이번 변동과 무관한 리포트가
+    # 딸려가므로, 애매하면 안 붙이는 편이 낫다.
+    pdf_map = {}
+    for menu_cd, gubun, title, fname, _kind, wdate in KIS_PDF_RE.findall(r.text):
+        pdf_map.setdefault((title.strip(), wdate), []).append(
+            {"menuCd": menu_cd, "gubun": gubun, "title": title.strip(),
+             "file": fname, "writedate": wdate})
+    for e in results:
+        e["pdfs"] = pdf_map.get(
+            (e["company"].strip(), e["date"].replace(".", "")), [])[:MAX_PDF_PER_ITEM]
+
     changed = filter_changes(results)
-    print(f"  [한국신용평가] 원본 {len(results)}건 -> 변동 {len(changed)}건")
+    n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
+    print(f"  [한국신용평가] 원본 {len(results)}건 -> 변동 {len(changed)}건, 리포트 {n_pdf}개 매칭")
     return changed
 
 
@@ -377,7 +405,8 @@ def scrape_all():
             errors.append(f"{fetcher.__name__} ({type(last_err).__name__})")
 
     print(f"\n  === 3사 합계: 변동 {len(all_data)}건, 실패 {len(errors)}곳 ===")
-    return all_data, errors
+    # 리포트를 같은 세션으로 받아야 쿠키가 유지된다.
+    return all_data, errors, session
 
 
 # --------------------------------------------------------------------------
@@ -452,21 +481,89 @@ def send_tg(msg: str) -> None:
     print("  텔레그램 전송 완료")
 
 
+def download_kis_pdf(session, meta) -> bytes:
+    r = session.post(KIS_DOWN_URL,
+                     data={"fileName": meta["file"], "fileTitle": meta["title"],
+                           "menuCd": meta["menuCd"], "gubun": meta["gubun"],
+                           "writedate": meta["writedate"], "freeYn": ""},
+                     headers={"Referer": KIS_LIST_URL}, timeout=(30, 120))
+    r.raise_for_status()
+    if not r.content.startswith(b"%PDF"):
+        # 유료·로그인 전환 시 HTML 이 돌아온다. 그대로 첨부하면 안 된다.
+        raise RuntimeError(f"PDF 가 아닙니다 ({len(r.content)}바이트)")
+    return r.content
+
+
+def send_tg_document(content: bytes, filename: str, caption: str) -> None:
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print(f"    (시크릿 없음 — {filename} 전송 생략)")
+        return
+    r = requests.post(
+        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendDocument",
+        data={"chat_id": TELEGRAM_CHAT_ID, "caption": caption[:1000]},
+        files={"document": (filename, content, "application/pdf")}, timeout=180)
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
+
+
+def send_reports(session, changes) -> int:
+    """등급변동 건에 매칭된 한국신용평가 리포트를 이어서 보낸다.
+
+    브리핑은 이미 나갔으므로 여기서 실패해도 전체를 실패로 만들지 않는다.
+    리포트를 못 받은 것과 브리핑이 안 간 것은 심각도가 다르다.
+    한국기업평가는 회원 로그인이 필요하고 NICE 는 목록에 링크가 없어
+    한국신용평가 건만 대상이 된다.
+    """
+    jobs = [(c, p) for c in changes for p in (c.get("pdfs") or [])][:MAX_PDF_PER_RUN]
+    if not jobs:
+        print("  첨부할 리포트 없음")
+        return 0
+
+    sent = failed = skipped = 0
+    seen = set()
+    for c, meta in jobs:
+        try:
+            content = download_kis_pdf(session, meta)
+            # 같은 회사·같은 날짜에 회차만 다른 리포트가 내용은 동일한 경우가
+            # 잦다(실측: 3건 중 2건이 바이트 단위로 동일). 같은 파일을 여러 번
+            # 보내면 채팅창만 지저분해진다.
+            digest = hashlib.sha256(content).hexdigest()
+            if digest in seen:
+                skipped += 1
+                print(f"    건너뜀 {meta['file']} (앞서 보낸 것과 내용 동일)")
+                continue
+            seen.add(digest)
+
+            prev = c.get("prev_rating") or "신규"
+            caption = (f"{c['company']} | {prev} -> {c['new_rating']} | {c['source']}"
+                       f"\n{c.get('eval_type', '')} {c.get('date', '')}".rstrip())
+            send_tg_document(content, meta["file"], caption)
+            sent += 1
+            print(f"    보냄 {c['company']} {meta['file']} ({len(content):,}B)")
+        except Exception as exc:
+            failed += 1
+            print(f"    실패 {c['company']} {meta['file']}: {type(exc).__name__}: {exc}")
+    print(f"  리포트 {sent}건 전송"
+          + (f", 중복 {skipped}건 제외" if skipped else "")
+          + (f", {failed}건 실패" if failed else ""))
+    return sent
+
+
 # --------------------------------------------------------------------------
 def main() -> int:
     print(f"📊 신용등급 모니터링 v7 — {NOW:%Y-%m-%d %H:%M} KST")
     print(f"   조회: {WEEK_AGO} ~ {TODAY} (NICE: {NICE_FROM} ~ {TODAY})")
     print("=" * 60)
 
-    print("\n[1/4] 3사 수집...")
-    data, errors = scrape_all()
+    print("\n[1/5] 3사 수집...")
+    data, errors, session = scrape_all()
 
-    print("\n[2/4] 기존 발송분 제외...")
+    print("\n[2/5] 기존 발송분 제외...")
     state = load_state()
     fresh = [d for d in data if item_key(d) not in state]
     print(f"  변동 {len(data)}건 중 신규 {len(fresh)}건 (기발송 {len(data) - len(fresh)}건 제외)")
 
-    print("\n[3/4] 브리핑 작성...")
+    print("\n[3/5] 브리핑 작성...")
     if errors and not data:
         # 전부 실패했는데 "변동 없음"이라고 하면 좋은 소식으로 오해한다.
         briefing = (f"⚠️ [{TODAY}] 신용등급 수집 실패\n\n"
@@ -481,8 +578,11 @@ def main() -> int:
     if errors and data:
         briefing += "\n\n⚠️ 일부 수집 실패: " + ", ".join(errors)
 
-    print("\n[4/4] 전송...")
+    print("\n[4/5] 브리핑 전송...")
     send_tg(briefing)
+
+    print("\n[5/5] 리포트 첨부...")
+    send_reports(session, fresh)
 
     # 전송에 성공한 건만 이력에 남긴다. 먼저 저장하면 전송 실패 시 영영 누락된다.
     if fresh:
