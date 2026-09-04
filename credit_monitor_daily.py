@@ -361,14 +361,18 @@ def fetch_kis(session):
     # 같은 페이지에 리포트 PDF 버튼이 함께 있다. 회사명과 발행일이 정확히
     # 맞는 것만 붙인다. 최근 것을 아무거나 붙이면 이번 변동과 무관한 리포트가
     # 딸려가므로, 애매하면 안 붙이는 편이 낫다.
+    # 한 회사·한 날짜에 회차만 다른 리포트가 여럿 걸린다. 실측하면 내용이
+    # 사실상 같은 문서라(96바이트 차이) 여러 개를 보내면 같은 PDF 가 반복해서
+    # 온다. 문서 종류(Rating Summary 등)별로 하나씩만 남긴다.
     pdf_map = {}
-    for menu_cd, gubun, title, fname, _kind, wdate in KIS_PDF_RE.findall(r.text):
-        pdf_map.setdefault((title.strip(), wdate), []).append(
-            {"menuCd": menu_cd, "gubun": gubun, "title": title.strip(),
-             "file": fname, "writedate": wdate})
+    for menu_cd, gubun, title, fname, kind, wdate in KIS_PDF_RE.findall(r.text):
+        bucket = pdf_map.setdefault((title.strip(), wdate), {})
+        bucket.setdefault(kind.strip(), {
+            "menuCd": menu_cd, "gubun": gubun, "title": title.strip(),
+            "file": fname, "writedate": wdate, "kind": kind.strip()})
     for e in results:
-        e["pdfs"] = pdf_map.get(
-            (e["company"].strip(), e["date"].replace(".", "")), [])[:MAX_PDF_PER_ITEM]
+        by_kind = pdf_map.get((e["company"].strip(), e["date"].replace(".", "")), {})
+        e["pdfs"] = list(by_kind.values())[:MAX_PDF_PER_ITEM]
 
     changed = filter_changes(results)
     n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
