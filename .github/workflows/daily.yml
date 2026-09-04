@@ -50,7 +50,9 @@ jobs:
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add state/sent.json
+          # -f 로 강제한다. 이 파일은 반드시 추적돼야 하는데, .gitignore 에
+          # state/ 가 들어가면 git add 가 오류로 끝나 스텝이 통째로 실패한다.
+          git add -f state/sent.json
           if git diff --staged --quiet; then
             echo "변경 없음."; exit 0
           fi
