@@ -133,8 +133,66 @@ def filter_changes(results):
         if (d.get("change_code") and d["change_code"] not in ("", "0")) or \
            (d["prev_rating"] and d["new_rating"] and d["prev_rating"] != d["new_rating"]) or \
            (d["prev_outlook"] and d["new_outlook"] and d["prev_outlook"] != d["new_outlook"]):
+            d["kind"] = change_kind(d)
             changed.append(d)
     return changed
+
+
+# 등급 순서 (좋은 등급 -> 나쁜 등급). 상향·하향 판정에 쓴다.
+LONG_ORDER = ["AAA", "AA+", "AA", "AA-", "A+", "A", "A-",
+              "BBB+", "BBB", "BBB-", "BB+", "BB", "BB-", "B+", "B", "B-",
+              "CCC+", "CCC", "CCC-", "CC", "C", "D"]
+SHORT_ORDER = ["A1", "A2+", "A2", "A2-", "A3+", "A3", "A3-", "B+", "B", "B-", "C", "D"]
+SHORT_ONLY = {"A1", "A2+", "A2", "A2-", "A3+", "A3", "A3-"}
+
+
+def clean_rating(s: str) -> str:
+    return (s or "").replace("(sf)", "").replace("보증", "").replace("(", "").replace(")", "").strip()
+
+
+def rating_rank(s: str):
+    """(체계, 순위). 장기·단기 등급은 서로 비교하지 않는다."""
+    r = clean_rating(s)
+    if r in SHORT_ONLY:
+        return ("S", SHORT_ORDER.index(r))
+    if r in LONG_ORDER:
+        return ("L", LONG_ORDER.index(r))
+    return None
+
+
+def change_kind(d) -> str:
+    """등급상향 / 등급하향 / 전망변경 / 신규평정 중 하나.
+
+    등급은 그대로인데 전망만 바뀐 건이 많다. 그걸 'BBB+ -> BBB+' 로 보여주면
+    무엇이 바뀐 건지 알 수 없다.
+    """
+    prev, new = d.get("prev_rating", ""), d.get("new_rating", "")
+    if not prev:
+        return "신규평정"
+    if clean_rating(prev) != clean_rating(new):
+        a, b = rating_rank(prev), rating_rank(new)
+        if a and b and a[0] == b[0]:
+            return "등급상향" if b[1] < a[1] else "등급하향"
+        return "등급변경"
+    if d.get("prev_outlook") and d.get("new_outlook") and d["prev_outlook"] != d["new_outlook"]:
+        return "전망변경"
+    return "변경"
+
+
+def describe_change(d) -> str:
+    """무엇이 바뀌었는지 한 줄로. 바뀐 축을 앞세운다."""
+    kind = d.get("kind") or change_kind(d)
+    prev, new = d.get("prev_rating", ""), d.get("new_rating", "")
+    po, no = d.get("prev_outlook", ""), d.get("new_outlook", "")
+
+    if kind == "전망변경":
+        return f"{new} · 전망 {po} -> {no}"
+    if kind == "신규평정":
+        return f"신규 {new}" + (f" ({no})" if no else "")
+    tail = ""
+    if po or no:
+        tail = f" (전망 {po or '-'} -> {no or '-'})" if po != no else f" ({no})"
+    return f"{prev} -> {new}{tail}"
 
 
 def item_key(d) -> str:
@@ -436,10 +494,15 @@ def analyze(changes):
             messages=[{"role": "user", "content":
                        f"오늘: {TODAY}\n\n신규 등급변동 데이터:\n"
                        f"{json.dumps(changes, ensure_ascii=False, indent=2)}\n\n"
+                       "각 건의 kind 필드가 변동 유형이다(등급상향/등급하향/"
+                       "전망변경/신규평정). 이 분류를 그대로 따르고 임의로 바꾸지 말 것.\n\n"
                        "형식:\n📊 [날짜] 신용등급 변동 브리핑\n"
                        "■ 부도/등급 하향 (⚠️)\n  - 업체명 | 변경전→변경후 | 출처\n"
                        "■ 등급 상향\n  - 업체명 | 변경전→변경후 | 출처\n"
-                       "■ Outlook 변경\n■ 신탁 포트폴리오 시사점 (2-3줄)\n"
+                       "■ 전망(Outlook) 변경\n"
+                       "  - 업체명 | 등급 유지 · 전망 변경전→변경후 | 출처\n"
+                       "    (등급은 그대로이므로 'BBB+ → BBB+' 처럼 쓰지 말 것)\n"
+                       "■ 신규 평정\n■ 신탁 포트폴리오 시사점 (2-3줄)\n"
                        "빈 카테고리는 생략. 2000자 이내."}])
         text = "".join(b.text for b in r.content if b.type == "text").strip()
         return text or format_plain(changes)
@@ -449,13 +512,16 @@ def analyze(changes):
         return format_plain(changes)
 
 
+ORDER = {"등급하향": 0, "등급변경": 1, "등급상향": 2, "전망변경": 3, "신규평정": 4, "변경": 5}
+
+
 def format_plain(changes):
     lines = [f"📊 [{TODAY}] 신용등급 변동 내역 ({len(changes)}건)\n"]
-    for c in sorted(changes, key=lambda c: 0 if c.get("new_rating") == "D" else 1):
-        prev = f"{c['prev_rating']}({c['prev_outlook']})" if c.get("prev_outlook") else c.get("prev_rating", "")
-        new = f"{c['new_rating']}({c['new_outlook']})" if c.get("new_outlook") else c.get("new_rating", "")
-        mark = "⚠️ " if c.get("new_rating") == "D" else ""
-        lines.append(f"- {mark}{c['company']} | {prev or '신규'} -> {new} | "
+    for c in sorted(changes, key=lambda c: (0 if c.get("new_rating") == "D" else 1,
+                                            ORDER.get(c.get("kind"), 9))):
+        kind = c.get("kind") or change_kind(c)
+        mark = "⚠️ " if c.get("new_rating") == "D" or kind == "등급하향" else ""
+        lines.append(f"- {mark}[{kind}] {c['company']} | {describe_change(c)} | "
                      f"{c['source']} [{c.get('date', '')}]")
     return "\n".join(lines)
 
