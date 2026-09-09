@@ -58,15 +58,33 @@ jobs:
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # -f 로 강제한다. 이 파일은 반드시 추적돼야 하는데, .gitignore 에
+          # -f 로 강제한다. 이 파일들은 반드시 추적돼야 하는데, .gitignore 에
           # state/ 가 들어가면 git add 가 오류로 끝나 스텝이 통째로 실패한다.
-          git add -f state/sent.json
+          # history.json 은 웹 리포트의 원본이라 같이 남겨야 화면이 쌓인다.
+          git add -f state/sent.json state/history.json
           if git diff --staged --quiet; then
             echo "변경 없음."; exit 0
           fi
-          git commit -m "Update sent history ($(TZ=Asia/Seoul date +%Y-%m-%d))"
+          git commit -m "Update history ($(TZ=Asia/Seoul date +%Y-%m-%d))"
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
           git push
+
+      # 휴대폰에서 보는 화면. 텔레그램은 '새 소식'을 알리고, 이 페이지는
+      # '지금까지 무슨 일이 있었나'를 본다.
+      - name: 페이지용 폴더 구성
+        run: |
+          test -s report.html || { echo "report.html 이 비어 있음"; exit 1; }
+          mkdir -p public
+          cp report.html public/index.html
+          cp apple-touch-icon.png favicon.png icon-512.png public/
+          ls -l public/
+
+      - name: GitHub Pages 로 배포
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
 
       # 스크립트가 통째로 죽으면 텔레그램이 안 간다. 침묵은 '변동 없음'과
       # 구분되지 않으므로 실패 자체를 알린다.

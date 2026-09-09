@@ -20,6 +20,9 @@ v6 -> v7 변경
      것만 붙인다. 한국기업평가는 평가의견(신용평가요지)까지 무료이고
      전체 평가리포트만 유료다. NICE 는 목록이 아니라 기업 상세 페이지에
      의견서가 있다.
+ 10. 휴대폰용 웹 리포트. state/history.json 에 변동을 누적하고 report.html 을
+     만들어 GitHub Pages 로 배포한다. 텔레그램은 새 소식을 알리는 통보이고,
+     이쪽은 지금까지 무슨 일이 있었는지 되돌아보는 화면이다.
 """
 from __future__ import annotations
 
@@ -52,6 +55,8 @@ NICE_FROM = (NOW - timedelta(days=14)).strftime("%Y-%m-%d")
 
 STATE_PATH = Path("state/sent.json")
 STATE_KEEP_DAYS = 45          # 조회 구간(14일)보다 넉넉히
+HISTORY_PATH = Path("state/history.json")
+HISTORY_KEEP_DAYS = 180       # 웹 리포트에 쌓아 보여줄 기간
 TIMEOUT = (30, 60)            # (연결, 읽기)
 RETRIES = 3
 RETRY_WAIT = 30
@@ -241,6 +246,45 @@ def load_state() -> dict:
         # 이력이 깨졌다고 알림을 멈출 수는 없다. 비우고 계속하되 알린다.
         print(f"  [warn] 전송 이력을 읽지 못해 새로 시작합니다: {type(exc).__name__}")
         return {}
+
+
+def load_history() -> dict:
+    """웹 리포트용 변동 이력. 전송 이력(sent.json)과 목적이 다르다.
+
+    sent.json 은 '이미 보냈나'만 알면 되므로 45일 뒤 지운다. 이쪽은 화면에
+    보여줄 내용이라 더 오래, 더 자세히 남긴다.
+    """
+    if HISTORY_PATH.exists():
+        try:
+            return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"  이력 파일을 읽지 못해 새로 시작합니다: {exc}")
+            return {}
+
+    # 첫 실행: 전송 이력의 키를 되살려 빈 화면으로 시작하지 않게 한다.
+    seeded = {}
+    for key, sent_on in load_state().items():
+        parts = key.split("|")
+        if len(parts) != 7:
+            continue
+        src, comp, date, pr, nr, po, no = parts
+        rec = dict(source=src, company=comp, date=date, prev_rating=pr,
+                   new_rating=nr, prev_outlook=po, new_outlook=no,
+                   eval_type="", first_seen=sent_on)
+        rec["kind"] = change_kind(rec)
+        seeded[key] = rec
+    if seeded:
+        print(f"  이력 없음 — 전송 기록 {len(seeded)}건으로 시작합니다.")
+    return seeded
+
+
+def save_history(hist: dict) -> None:
+    cutoff = (NOW - timedelta(days=HISTORY_KEEP_DAYS)).strftime("%Y-%m-%d")
+    pruned = {k: v for k, v in hist.items() if (v.get("first_seen") or "") >= cutoff}
+    HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    HISTORY_PATH.write_text(
+        json.dumps(pruned, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+    print(f"  변동 이력 {len(pruned)}건 저장 (만료 {len(hist) - len(pruned)}건 정리)")
 
 
 def save_state(state: dict) -> None:
@@ -749,20 +793,44 @@ def send_reports(session, changes) -> int:
 
 
 # --------------------------------------------------------------------------
+def write_html(hist: dict, errors, path="report.html") -> None:
+    """휴대폰에서 볼 수 있는 정적 리포트. 템플릿의 자리표시자에 JSON 을 끼워 넣는다."""
+    tpl = Path("report_template.html")
+    if not tpl.exists():
+        print("  report_template.html 이 없어 HTML 생성을 건너뜁니다.")
+        return
+
+    keys = ("source", "company", "date", "prev_rating", "new_rating",
+            "prev_outlook", "new_outlook", "kind", "eval_type")
+    records = [{k: (r.get(k) or "") for k in keys} for r in hist.values()]
+    payload = {
+        "meta": {
+            "generatedAt": NOW.strftime("%Y-%m-%d %H:%M") + " KST",
+            "keepDays": HISTORY_KEEP_DAYS,
+            "errors": list(errors or []),
+        },
+        "records": records,
+    }
+    html = tpl.read_text(encoding="utf-8").replace(
+        "/*__DATA__*/null", json.dumps(payload, ensure_ascii=False))
+    Path(path).write_text(html, encoding="utf-8")
+    print(f"  {path} 생성 ({len(records)}건, {len(html):,} bytes)")
+
+
 def main() -> int:
     print(f"📊 신용등급 모니터링 v7 — {NOW:%Y-%m-%d %H:%M} KST")
     print(f"   조회: {WEEK_AGO} ~ {TODAY} (NICE: {NICE_FROM} ~ {TODAY})")
     print("=" * 60)
 
-    print("\n[1/5] 3사 수집...")
+    print("\n[1/6] 3사 수집...")
     data, errors, session = scrape_all()
 
-    print("\n[2/5] 기존 발송분 제외...")
+    print("\n[2/6] 기존 발송분 제외...")
     state = load_state()
     fresh = [d for d in data if item_key(d) not in state]
     print(f"  변동 {len(data)}건 중 신규 {len(fresh)}건 (기발송 {len(data) - len(fresh)}건 제외)")
 
-    print("\n[3/5] 브리핑 작성...")
+    print("\n[3/6] 브리핑 작성...")
     if errors and not data:
         # 전부 실패했는데 "변동 없음"이라고 하면 좋은 소식으로 오해한다.
         briefing = (f"⚠️ [{TODAY}] 신용등급 수집 실패\n\n"
@@ -777,10 +845,10 @@ def main() -> int:
     if errors and data:
         briefing += "\n\n⚠️ 일부 수집 실패: " + ", ".join(errors)
 
-    print("\n[4/5] 브리핑 전송...")
+    print("\n[4/6] 브리핑 전송...")
     send_tg(briefing)
 
-    print("\n[5/5] 리포트 첨부...")
+    print("\n[5/6] 리포트 첨부...")
     send_reports(session, fresh)
 
     # 전송에 성공한 건만 이력에 남긴다. 먼저 저장하면 전송 실패 시 영영 누락된다.
@@ -788,6 +856,18 @@ def main() -> int:
         for d in fresh:
             state[item_key(d)] = TODAY
         save_state(state)
+
+    # 웹 리포트는 발송 여부와 무관하게 수집된 전부를 쌓는다. 텔레그램은 '새 소식'을
+    # 알리는 것이고, 이쪽은 '지금까지 무슨 일이 있었나'를 보는 화면이다.
+    print("\n[6/6] 웹 리포트 갱신...")
+    hist = load_history()
+    for d in data:
+        rec = hist.setdefault(item_key(d), {"first_seen": TODAY})
+        rec.update({k: d.get(k, "") for k in
+                    ("source", "company", "date", "prev_rating", "new_rating",
+                     "prev_outlook", "new_outlook", "kind", "eval_type")})
+    save_history(hist)
+    write_html(hist, errors)
 
     if errors:
         print(f"\n⚠️ 완료 (일부 수집 실패: {', '.join(errors)})")

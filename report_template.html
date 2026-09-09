@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>신용등급 변동</title>
+<meta name="theme-color" content="#EEF1F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1315" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="신용등급">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="favicon.png" sizes="32x32">
+<style>
+:root{
+  --ground:#EEF1F2; --surface:#FFFFFF; --surface-sub:#E4E9EA;
+  --ink:#141B1E; --ink-2:#43535A; --ink-3:#6E7F86;
+  --rule:#D3DBDD; --rule-soft:#E2E8E9;
+  --accent:#A9691A; --accent-soft:#F3E5D2;
+  --confirm:#186B52; --confirm-soft:#DDEDE6;
+  --down:#B3261E; --down-soft:#F7E0DE;
+  --shadow:0 1px 2px rgba(20,27,30,.05), 0 6px 20px -12px rgba(20,27,30,.22);
+  --font-ui:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo",
+    "Pretendard", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono:ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1315; --surface:#171E21; --surface-sub:#202A2D;
+    --ink:#E9EEEF; --ink-2:#A5B3B8; --ink-3:#7E8E94;
+    --rule:#2B3639; --rule-soft:#222C2F;
+    --accent:#E3A24E; --accent-soft:#3A2C17;
+    --confirm:#4FBE99; --confirm-soft:#17332A;
+    --down:#F2837A; --down-soft:#3A211F;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1315; --surface:#171E21; --surface-sub:#202A2D;
+  --ink:#E9EEEF; --ink-2:#A5B3B8; --ink-3:#7E8E94;
+  --rule:#2B3639; --rule-soft:#222C2F;
+  --accent:#E3A24E; --accent-soft:#3A2C17;
+  --confirm:#4FBE99; --confirm-soft:#17332A;
+  --down:#F2837A; --down-soft:#3A211F;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--font-ui); font-size:15px; line-height:1.5;
+  -webkit-text-size-adjust:100%; -webkit-font-smoothing:antialiased;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.wrap{max-width:680px; margin:0 auto; padding:20px 16px 56px}
+
+header{margin-bottom:18px}
+h1{font-size:21px; font-weight:650; letter-spacing:-.02em; margin:0 0 6px}
+.asof{font-size:13px; color:var(--ink-3); margin:0}
+.asof b{color:var(--ink-2); font-weight:550}
+
+.warn{
+  margin:14px 0 0; padding:11px 13px; border-radius:10px;
+  background:var(--down-soft); color:var(--down);
+  font-size:13px; line-height:1.45; border:1px solid transparent;
+}
+
+.tally{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 0}
+.tally div{
+  flex:1 1 0; min-width:74px; background:var(--surface); border-radius:11px;
+  padding:10px 11px; box-shadow:var(--shadow);
+}
+.tally .n{font-size:19px; font-weight:640; font-family:var(--font-mono); letter-spacing:-.02em}
+.tally .l{font-size:11px; color:var(--ink-3); margin-top:1px}
+.tally .dn .n{color:var(--down)} .tally .up .n{color:var(--confirm)}
+
+nav{display:flex; gap:7px; overflow-x:auto; margin:18px -16px 0; padding:0 16px 2px;
+    scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+button.chip{
+  flex:0 0 auto; font:inherit; font-size:13px; font-weight:520;
+  padding:7px 13px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--rule); background:var(--surface); color:var(--ink-2);
+  -webkit-tap-highlight-color:transparent;
+}
+button.chip[aria-pressed="true"]{
+  background:var(--ink); color:var(--ground); border-color:var(--ink);
+}
+
+.day{margin-top:22px}
+.day > h2{
+  font-size:12px; font-weight:600; color:var(--ink-3); margin:0 0 8px 2px;
+  letter-spacing:.02em; font-variant-numeric:tabular-nums;
+}
+
+.card{
+  background:var(--surface); border-radius:13px; padding:13px 14px;
+  box-shadow:var(--shadow); margin-bottom:9px;
+}
+.card .top{display:flex; align-items:baseline; gap:8px; margin-bottom:9px}
+.name{font-size:15px; font-weight:600; letter-spacing:-.01em; flex:1; min-width:0;
+      overflow-wrap:anywhere}
+.badge{
+  flex:0 0 auto; font-size:10.5px; font-weight:600; padding:2.5px 7px;
+  border-radius:5px; background:var(--surface-sub); color:var(--ink-3);
+  white-space:nowrap;
+}
+.kind{
+  flex:0 0 auto; font-size:10.5px; font-weight:650; padding:2.5px 7px; border-radius:5px;
+  white-space:nowrap;
+}
+.k-dn{background:var(--down-soft); color:var(--down)}
+.k-up{background:var(--confirm-soft); color:var(--confirm)}
+.k-ol{background:var(--accent-soft); color:var(--accent)}
+.k-nu{background:var(--surface-sub); color:var(--ink-3)}
+
+.move{
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  font-family:var(--font-mono); font-size:15px; letter-spacing:-.01em;
+}
+.g{font-weight:600}
+.g.from{color:var(--ink-3)}
+.g.to.dn{color:var(--down)} .g.to.up{color:var(--confirm)} .g.to.nu{color:var(--ink)}
+.arw{color:var(--ink-3); font-family:var(--font-ui)}
+.ol{font-family:var(--font-ui); font-size:12.5px; color:var(--ink-2); margin-top:6px}
+.ol .sm{color:var(--ink-3)}
+
+.empty{
+  text-align:center; padding:44px 20px; color:var(--ink-3);
+  background:var(--surface); border-radius:13px; box-shadow:var(--shadow); margin-top:20px;
+}
+.empty p{margin:0; font-size:14px}
+.empty .sub{font-size:12.5px; margin-top:7px; color:var(--ink-3)}
+
+footer{margin-top:30px; font-size:11.5px; color:var(--ink-3); line-height:1.6}
+footer a{color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>신용등급 변동</h1>
+    <p class="asof" id="asof"></p>
+    <div id="warn"></div>
+  </header>
+  <div class="tally" id="tally"></div>
+  <nav id="nav"></nav>
+  <main id="list"></main>
+  <footer>
+    한국기업평가 · 한국신용평가 · NICE신용평가 공시 기준<br>
+    등급 뒤 <b>↓·↑</b> 는 하향·상향 검토(Rating Watch) 지정을 뜻합니다.
+  </footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+
+// 카드가 좁아 정식 명칭은 들어가지 않는다. 업계 약칭을 쓴다.
+const SOURCE_SHORT = {
+  "한국기업평가":"한기평", "한국신용평가":"한신평", "NICE신용평가":"NICE"
+};
+
+const KIND_CLASS = {
+  "등급하향":"k-dn", "등급상향":"k-up", "등급변경":"k-dn",
+  "전망변경":"k-ol", "신규평정":"k-nu", "검토변경":"k-ol", "변경":"k-nu"
+};
+const TONE = { "등급하향":"dn", "등급변경":"dn", "등급상향":"up" };
+
+const FILTERS = [
+  ["all",  "전체",   () => true],
+  ["dn",   "하향",   r => r.kind === "등급하향" || r.kind === "등급변경"],
+  ["up",   "상향",   r => r.kind === "등급상향"],
+  ["ol",   "전망·검토", r => r.kind === "전망변경" || r.kind === "검토변경"],
+  ["nu",   "신규",   r => r.kind === "신규평정"],
+];
+
+let active = "all";
+
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g,
+    c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+function render(){
+  const meta = (DATA && DATA.meta) || {};
+  const rows = ((DATA && DATA.records) || []).slice();
+
+  document.getElementById("asof").innerHTML =
+    "기준 <b>" + esc(meta.generatedAt || "-") + "</b> · 최근 " +
+    esc(meta.keepDays || 180) + "일 누적 " + rows.length + "건";
+
+  const warn = document.getElementById("warn");
+  if (meta.errors && meta.errors.length){
+    warn.innerHTML = '<div class="warn"><b>수집 실패: ' + esc(meta.errors.join(", ")) +
+      "</b><br>변동이 없다는 뜻이 아닙니다. 아래 목록이 불완전할 수 있습니다.</div>";
+  } else { warn.innerHTML = ""; }
+
+  // 집계는 필터와 무관하게 전체 기준으로 보여준다
+  const n = k => rows.filter(r => r.kind === k).length;
+  document.getElementById("tally").innerHTML =
+    '<div class="dn"><div class="n">' + (n("등급하향") + n("등급변경")) + '</div><div class="l">하향</div></div>' +
+    '<div class="up"><div class="n">' + n("등급상향") + '</div><div class="l">상향</div></div>' +
+    '<div><div class="n">' + (n("전망변경") + n("검토변경")) + '</div><div class="l">전망·검토</div></div>' +
+    '<div><div class="n">' + n("신규평정") + '</div><div class="l">신규</div></div>';
+
+  document.getElementById("nav").innerHTML = FILTERS.map(([id, label, fn]) => {
+    const c = rows.filter(fn).length;
+    return '<button class="chip" data-f="' + id + '" aria-pressed="' + (id === active) +
+           '">' + esc(label) + " " + c + "</button>";
+  }).join("");
+
+  const pred = (FILTERS.find(f => f[0] === active) || FILTERS[0])[2];
+  const shown = rows.filter(pred);
+  shown.sort((a, b) => (b.date || "").localeCompare(a.date || "") ||
+                       (a.company || "").localeCompare(b.company || ""));
+
+  const list = document.getElementById("list");
+  if (!shown.length){
+    list.innerHTML = '<div class="empty"><p>해당하는 변동이 없습니다.</p>' +
+      '<p class="sub">수집은 정상입니다 — 기간 내 공시가 없었다는 뜻입니다.</p></div>';
+  } else {
+    let html = "", day = null;
+    for (const r of shown){
+      if (r.date !== day){
+        if (day !== null) html += "</div>";
+        day = r.date;
+        html += '<div class="day"><h2>' + esc(day) + "</h2>";
+      }
+      const tone = TONE[r.kind] || "nu";
+
+      // 전망만 바뀐 건은 등급을 두 번 쓰지 않는다. 'BBB+ → BBB+' 로 보여주면
+      // 무엇이 달라졌는지 읽히지 않는다. 바뀐 축을 앞세운다.
+      let move, extra = "";
+      if (r.kind === "전망변경"){
+        move = '<span class="g to nu">' + esc(r.new_rating) + "</span>" +
+               '<span class="arw">유지 · 전망</span>' +
+               '<span class="g from">' + esc(r.prev_outlook || "–") + "</span>" +
+               '<span class="arw">→</span>' +
+               '<span class="g to ol">' + esc(r.new_outlook || "–") + "</span>";
+      } else {
+        move = (r.prev_rating
+                 ? '<span class="g from">' + esc(r.prev_rating) + '</span><span class="arw">→</span>'
+                 : '<span class="arw">신규</span>') +
+               '<span class="g to ' + tone + '">' + esc(r.new_rating) + "</span>";
+        if (r.prev_outlook || r.new_outlook){
+          extra = '<div class="ol">전망 <span class="sm">' + esc(r.prev_outlook || "–") +
+                  "</span> → " + esc(r.new_outlook || "–") + "</div>";
+        }
+      }
+
+      html += '<div class="card"><div class="top">' +
+        '<span class="name">' + esc(r.company) + "</span>" +
+        '<span class="kind ' + (KIND_CLASS[r.kind] || "k-nu") + '">' + esc(r.kind) + "</span>" +
+        '<span class="badge">' + esc(SOURCE_SHORT[r.source] || r.source || "") + "</span>" +
+        "</div><div class='move'>" + move + "</div>" + extra + "</div>";
+    }
+    html += "</div>";
+    list.innerHTML = html;
+  }
+
+  for (const b of document.querySelectorAll("button.chip")){
+    b.onclick = () => { active = b.dataset.f; render(); };
+  }
+}
+render();
+</script>
+</body>
+</html>
