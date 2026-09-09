@@ -727,6 +727,35 @@ def download_nice_pdf(session, meta) -> bytes:
     return r.content
 
 
+def pdf_link(meta):
+    """웹 리포트에서 평가사 원본 PDF 로 바로 가는 링크.
+
+    파일을 저장소에 올려 배포하면 평가사 저작물을 재배포하는 셈이 된다.
+    주소만 넘기고 내려받기는 평가사 서버가 하게 둔다.
+
+    세 곳 모두 로그인·쿠키·리퍼러 없이 열리는 것을 확인했다. 다만 한국신용평가만
+    POST 라 <a> 로는 못 걸어서, 화면에서 폼으로 보내도록 필드를 함께 넘긴다.
+    """
+    if not meta:
+        return None
+    src = meta.get("src")
+    if src == "nice":
+        return {"method": "get", "url": NICE_DOWN_URL + "?docId=" + meta["docId"]}
+    if src == "kr":
+        # 서버가 쿼리스트링을 직접 파싱한다. download_kr_pdf 와 같은 이유로
+        # 인코딩 없이 그대로 이어붙인다.
+        return {"method": "get", "url": (
+            KR_DOWN_URL + "?dumm=asdf"
+            + "&encFileNm=" + meta["encFileNm"]
+            + "&encSvcSeqNo=" + meta["encSvcSeqNo"]
+            + "&evalNo=" + meta["evalNo"]
+            + "&rptNo=03&fileName=&compCd=" + meta["compCd"] + "&compNm=")}
+    return {"method": "post", "url": KIS_DOWN_URL, "fields": {
+        "fileName": meta.get("file", ""), "fileTitle": meta.get("title", ""),
+        "menuCd": meta.get("menuCd", ""), "gubun": meta.get("gubun", ""),
+        "writedate": meta.get("writedate", ""), "freeYn": ""}}
+
+
 def download_pdf(session, meta) -> bytes:
     src = meta.get("src")
     if src == "nice":
@@ -802,7 +831,12 @@ def write_html(hist: dict, errors, path="report.html") -> None:
 
     keys = ("source", "company", "date", "prev_rating", "new_rating",
             "prev_outlook", "new_outlook", "kind", "eval_type")
-    records = [{k: (r.get(k) or "") for k in keys} for r in hist.values()]
+    records = []
+    for r in hist.values():
+        rec = {k: (r.get(k) or "") for k in keys}
+        if r.get("pdf"):
+            rec["pdf"] = r["pdf"]
+        records.append(rec)
     payload = {
         "meta": {
             "generatedAt": NOW.strftime("%Y-%m-%d %H:%M") + " KST",
@@ -866,6 +900,9 @@ def main() -> int:
         rec.update({k: d.get(k, "") for k in
                     ("source", "company", "date", "prev_rating", "new_rating",
                      "prev_outlook", "new_outlook", "kind", "eval_type")})
+        link = pdf_link((d.get("pdfs") or [None])[0])
+        if link:
+            rec["pdf"] = link
     save_history(hist)
     write_html(hist, errors)
 
