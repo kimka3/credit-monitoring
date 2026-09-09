@@ -10,7 +10,19 @@
 <meta name="apple-mobile-web-app-title" content="신용등급">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="favicon.png" sizes="32x32">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <style>
+/* 나눔스퀘어 네오 — 상업용 무료, 웹 배포 허용(네이버 글꼴 라이선스).
+   가변 폰트 하나로 100~900 굵기를 모두 쓴다. 1.4MB 라 셀룰러에서 잠깐 걸리지만
+   swap 이라 본문은 즉시 뜨고, 받은 뒤 1년간 캐시된다.
+   CDN 이 막힌 망에서는 아래 시스템 폰트로 조용히 내려간다. */
+@font-face{
+  font-family:"NanumSquare Neo";
+  src:url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/NanumSquareNeo-Variable.woff2")
+      format("woff2-variations");
+  font-weight:100 900;
+  font-display:swap;
+}
 :root{
   --ground:#EEF1F2; --surface:#FFFFFF; --surface-sub:#E4E9EA;
   --ink:#141B1E; --ink-2:#43535A; --ink-3:#6E7F86;
@@ -19,9 +31,8 @@
   --confirm:#186B52; --confirm-soft:#DDEDE6;
   --down:#B3261E; --down-soft:#F7E0DE;
   --shadow:0 1px 2px rgba(20,27,30,.05), 0 6px 20px -12px rgba(20,27,30,.22);
-  --font-ui:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo",
-    "Pretendard", "Malgun Gothic", system-ui, sans-serif;
-  --font-mono:ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --font-ui:"NanumSquare Neo", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -69,7 +80,7 @@ h1{font-size:21px; font-weight:650; letter-spacing:-.02em; margin:0 0 6px}
   flex:1 1 0; min-width:74px; background:var(--surface); border-radius:11px;
   padding:10px 11px; box-shadow:var(--shadow);
 }
-.tally .n{font-size:19px; font-weight:640; font-family:var(--font-mono); letter-spacing:-.02em}
+.tally .n{font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
 .tally .l{font-size:11px; color:var(--ink-3); margin-top:1px}
 .tally .dn .n{color:var(--down)} .tally .up .n{color:var(--confirm)}
 
@@ -108,6 +119,15 @@ button.chip[aria-pressed="true"]{
   flex:0 0 auto; font-size:10.5px; font-weight:650; padding:2.5px 7px; border-radius:5px;
   white-space:nowrap;
 }
+/* 평가사 서버의 요지 PDF 로 바로 간다. 링크와 폼 전송 두 형태가 같아 보여야 한다. */
+.pdf{
+  flex:0 0 auto; display:inline-block; font:inherit; font-size:10.5px; font-weight:650;
+  padding:2.5px 7px; border-radius:5px; cursor:pointer; white-space:nowrap;
+  border:1px solid var(--rule); background:var(--surface); color:var(--ink-2);
+  text-decoration:none; -webkit-tap-highlight-color:transparent;
+}
+.pdf:active{background:var(--surface-sub)}
+form.pdfform{display:contents}
 .k-dn{background:var(--down-soft); color:var(--down)}
 .k-up{background:var(--confirm-soft); color:var(--confirm)}
 .k-ol{background:var(--accent-soft); color:var(--accent)}
@@ -115,7 +135,7 @@ button.chip[aria-pressed="true"]{
 
 .move{
   display:flex; align-items:center; gap:9px; flex-wrap:wrap;
-  font-family:var(--font-mono); font-size:15px; letter-spacing:-.01em;
+  font-size:15px; letter-spacing:-.01em;
 }
 .g{font-weight:600}
 .g.from{color:var(--ink-3)}
@@ -152,7 +172,7 @@ footer a{color:var(--ink-3)}
 </div>
 
 <script>
-const DATA = {"meta": {"generatedAt": "2026-09-09 14:08 KST", "keepDays": 180, "errors": []}, "records": [{"source": "NICE신용평가", "company": "(주)에코프로", "date": "2026.08.25", "prev_rating": "A-", "new_rating": "A-", "prev_outlook": "Stable", "new_outlook": "Negative", "kind": "전망변경", "eval_type": ""}, {"source": "NICE신용평가", "company": "(주)윌비스", "date": "2026.09.04", "prev_rating": "CCC↓", "new_rating": "D", "prev_outlook": "", "new_outlook": "", "kind": "등급하향", "eval_type": "수시"}, {"source": "한국기업평가", "company": "에이치와이중앙제일차(주)", "date": "2026.08.31", "prev_rating": "C", "new_rating": "D", "prev_outlook": "", "new_outlook": "", "kind": "등급하향", "eval_type": ""}, {"source": "한국신용평가", "company": "동화기업", "date": "2026.08.31", "prev_rating": "BBB+", "new_rating": "BBB+", "prev_outlook": "안정적", "new_outlook": "부정적", "kind": "전망변경", "eval_type": ""}]};
+const DATA = {"meta": {"generatedAt": "2026-09-09 14:25 KST", "keepDays": 180, "errors": []}, "records": [{"source": "NICE신용평가", "company": "(주)에코프로", "date": "2026.08.25", "prev_rating": "A-", "new_rating": "A-", "prev_outlook": "Stable", "new_outlook": "Negative", "kind": "전망변경", "eval_type": ""}, {"source": "NICE신용평가", "company": "(주)윌비스", "date": "2026.09.04", "prev_rating": "CCC↓", "new_rating": "D", "prev_outlook": "", "new_outlook": "", "kind": "등급하향", "eval_type": "수시", "pdf": {"method": "get", "url": "https://www.nicerating.com/common/fileDown.do?docId=c925b29f-e4c0-4e7e-8968-7b27b508a98a"}}, {"source": "한국기업평가", "company": "에이치와이중앙제일차(주)", "date": "2026.08.31", "prev_rating": "C", "new_rating": "D", "prev_outlook": "", "new_outlook": "", "kind": "등급하향", "eval_type": ""}, {"source": "한국신용평가", "company": "동화기업", "date": "2026.08.31", "prev_rating": "BBB+", "new_rating": "BBB+", "prev_outlook": "안정적", "new_outlook": "부정적", "kind": "전망변경", "eval_type": ""}]};
 
 // 카드가 좁아 정식 명칭은 들어가지 않는다. 업계 약칭을 쓴다.
 const SOURCE_SHORT = {
@@ -178,6 +198,21 @@ let active = "all";
 function esc(s){
   return String(s == null ? "" : s).replace(/[&<>"']/g,
     c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+
+// 평가사 원본 PDF 버튼. 한국신용평가만 POST 라서 폼으로 보낸다 — 겉모습은 같다.
+function pdfButton(r){
+  const p = r.pdf;
+  if (!p || !p.url) return "";
+  if (p.method === "get"){
+    return '<a class="pdf" href="' + esc(p.url) +
+           '" target="_blank" rel="noopener">요지 PDF</a>';
+  }
+  const fields = Object.entries(p.fields || {}).map(
+    ([k, v]) => '<input type="hidden" name="' + esc(k) + '" value="' + esc(v) + '">').join("");
+  return '<form class="pdfform" method="post" action="' + esc(p.url) +
+         '" target="_blank" rel="noopener">' + fields +
+         '<button class="pdf" type="submit">요지 PDF</button></form>';
 }
 
 function render(){
@@ -241,14 +276,19 @@ function render(){
                  ? '<span class="g from">' + esc(r.prev_rating) + '</span><span class="arw">→</span>'
                  : '<span class="arw">신규</span>') +
                '<span class="g to ' + tone + '">' + esc(r.new_rating) + "</span>";
-        if (r.prev_outlook || r.new_outlook){
-          extra = '<div class="ol">전망 <span class="sm">' + esc(r.prev_outlook || "–") +
-                  "</span> → " + esc(r.new_outlook || "–") + "</div>";
+        // 등급이 바뀐 건에 딸린 전망. 그대로면 화살표를 쓰지 않는다 —
+        // '안정적 → 안정적' 은 바뀐 것처럼 보이게 할 뿐이다.
+        if (r.prev_outlook && r.new_outlook && r.prev_outlook !== r.new_outlook){
+          extra = '<div class="ol">전망 <span class="sm">' + esc(r.prev_outlook) +
+                  "</span> → " + esc(r.new_outlook) + "</div>";
+        } else if (r.new_outlook || r.prev_outlook){
+          extra = '<div class="ol">전망 ' + esc(r.new_outlook || r.prev_outlook) + "</div>";
         }
       }
 
       html += '<div class="card"><div class="top">' +
         '<span class="name">' + esc(r.company) + "</span>" +
+        pdfButton(r) +
         '<span class="kind ' + (KIND_CLASS[r.kind] || "k-nu") + '">' + esc(r.kind) + "</span>" +
         '<span class="badge">' + esc(SOURCE_SHORT[r.source] || r.source || "") + "</span>" +
         "</div><div class='move'>" + move + "</div>" + extra + "</div>";
