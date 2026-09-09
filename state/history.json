@@ -1,0 +1,50 @@
+{
+ "NICE신용평가|(주)에코프로|2026.08.25|A-|A-|Stable|Negative": {
+  "company": "(주)에코프로",
+  "date": "2026.08.25",
+  "eval_type": "",
+  "first_seen": "2026-09-04",
+  "kind": "전망변경",
+  "new_outlook": "Negative",
+  "new_rating": "A-",
+  "prev_outlook": "Stable",
+  "prev_rating": "A-",
+  "source": "NICE신용평가"
+ },
+ "NICE신용평가|(주)윌비스|2026.09.04|CCC↓|D||": {
+  "company": "(주)윌비스",
+  "date": "2026.09.04",
+  "eval_type": "수시",
+  "first_seen": "2026-09-09",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "D",
+  "prev_outlook": "",
+  "prev_rating": "CCC↓",
+  "source": "NICE신용평가"
+ },
+ "한국기업평가|에이치와이중앙제일차(주)|2026.08.31|C|D||": {
+  "company": "에이치와이중앙제일차(주)",
+  "date": "2026.08.31",
+  "eval_type": "",
+  "first_seen": "2026-09-04",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "D",
+  "prev_outlook": "",
+  "prev_rating": "C",
+  "source": "한국기업평가"
+ },
+ "한국신용평가|동화기업|2026.08.31|BBB+|BBB+|안정적|부정적": {
+  "company": "동화기업",
+  "date": "2026.08.31",
+  "eval_type": "",
+  "first_seen": "2026-09-04",
+  "kind": "전망변경",
+  "new_outlook": "부정적",
+  "new_rating": "BBB+",
+  "prev_outlook": "안정적",
+  "prev_rating": "BBB+",
+  "source": "한국신용평가"
+ }
+}
