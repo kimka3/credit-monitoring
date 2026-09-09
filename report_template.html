@@ -10,7 +10,19 @@
 <meta name="apple-mobile-web-app-title" content="신용등급">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="favicon.png" sizes="32x32">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <style>
+/* 나눔스퀘어 네오 — 상업용 무료, 웹 배포 허용(네이버 글꼴 라이선스).
+   가변 폰트 하나로 100~900 굵기를 모두 쓴다. 1.4MB 라 셀룰러에서 잠깐 걸리지만
+   swap 이라 본문은 즉시 뜨고, 받은 뒤 1년간 캐시된다.
+   CDN 이 막힌 망에서는 아래 시스템 폰트로 조용히 내려간다. */
+@font-face{
+  font-family:"NanumSquare Neo";
+  src:url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_11-01@1.0/NanumSquareNeo-Variable.woff2")
+      format("woff2-variations");
+  font-weight:100 900;
+  font-display:swap;
+}
 :root{
   --ground:#EEF1F2; --surface:#FFFFFF; --surface-sub:#E4E9EA;
   --ink:#141B1E; --ink-2:#43535A; --ink-3:#6E7F86;
@@ -19,9 +31,8 @@
   --confirm:#186B52; --confirm-soft:#DDEDE6;
   --down:#B3261E; --down-soft:#F7E0DE;
   --shadow:0 1px 2px rgba(20,27,30,.05), 0 6px 20px -12px rgba(20,27,30,.22);
-  --font-ui:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Apple SD Gothic Neo",
-    "Pretendard", "Malgun Gothic", system-ui, sans-serif;
-  --font-mono:ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  --font-ui:"NanumSquare Neo", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -69,7 +80,7 @@ h1{font-size:21px; font-weight:650; letter-spacing:-.02em; margin:0 0 6px}
   flex:1 1 0; min-width:74px; background:var(--surface); border-radius:11px;
   padding:10px 11px; box-shadow:var(--shadow);
 }
-.tally .n{font-size:19px; font-weight:640; font-family:var(--font-mono); letter-spacing:-.02em}
+.tally .n{font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
 .tally .l{font-size:11px; color:var(--ink-3); margin-top:1px}
 .tally .dn .n{color:var(--down)} .tally .up .n{color:var(--confirm)}
 
@@ -115,7 +126,7 @@ button.chip[aria-pressed="true"]{
 
 .move{
   display:flex; align-items:center; gap:9px; flex-wrap:wrap;
-  font-family:var(--font-mono); font-size:15px; letter-spacing:-.01em;
+  font-size:15px; letter-spacing:-.01em;
 }
 .g{font-weight:600}
 .g.from{color:var(--ink-3)}
