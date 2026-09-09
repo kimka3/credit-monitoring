@@ -129,10 +129,8 @@ class TableParser(HTMLParser):
 
 
 def is_valid_rating(s: str) -> bool:
-    """실제 신용등급인지. 'AAA (sf)', 'AA(보증)' 형태 지원."""
-    if not s:
-        return False
-    return s.replace("(sf)", "").replace("보증", "").replace("(", "").replace(")", "").strip() in RATING_GRADES
+    """실제 신용등급인지. 'AAA (sf)', 'AA(보증)', 'CCC↓' 형태 지원."""
+    return bool(s) and clean_rating(s) in RATING_GRADES
 
 
 def is_date(s: str) -> bool:
@@ -163,8 +161,15 @@ SHORT_ORDER = ["A1", "A2+", "A2", "A2-", "A3+", "A3", "A3-", "B+", "B", "B-", "C
 SHORT_ONLY = {"A1", "A2+", "A2", "A2-", "A3+", "A3", "A3-"}
 
 
+# 평가사가 등급 뒤에 붙이는 Rating Watch 표시. NICE 는 '↓', 한국기업평가는 '↑'.
+# 등급 자체가 아니라 '검토 중'이라는 딱지이므로 판정·비교에서는 떼어낸다.
+# 화면에는 그대로 남긴다 — 'CCC↓ -> D' 가 'CCC -> D' 보다 많은 것을 말해준다.
+WATCH_MARKS = "↑↓↕"
+
+
 def clean_rating(s: str) -> str:
-    return (s or "").replace("(sf)", "").replace("보증", "").replace("(", "").replace(")", "").strip()
+    s = (s or "").replace("(sf)", "").replace("보증", "").replace("(", "").replace(")", "")
+    return s.strip().strip(WATCH_MARKS).strip()
 
 
 def rating_rank(s: str):
@@ -193,6 +198,9 @@ def change_kind(d) -> str:
         return "등급변경"
     if d.get("prev_outlook") and d.get("new_outlook") and d["prev_outlook"] != d["new_outlook"]:
         return "전망변경"
+    if prev != new:
+        # 등급은 같고 Rating Watch 딱지만 붙거나 떨어진 경우 ('CCC↓' -> 'CCC').
+        return "검토변경"
     return "변경"
 
 
