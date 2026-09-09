@@ -822,6 +822,127 @@ def send_reports(session, changes) -> int:
 
 
 # --------------------------------------------------------------------------
+def backfill_pdf_links(session, hist: dict) -> None:
+    """이력에 링크가 비어 있는 건을 뒤늦게 채운다.
+
+    수집 창(7일, NICE 14일)을 벗어난 뒤 이력에 남은 건은 링크를 못 받는다.
+    창 자체를 넓히면 그동안 발송되지 않은 옛 변동이 한꺼번에 텔레그램으로
+    쏟아지므로, 링크 채우기만 따로 넓게 조회한다. 여기서 찾은 것은 화면에만
+    쓰고 발송 대상에는 넣지 않는다.
+
+    한 건당 한 번만 시도한다(pdf_checked). 의견서가 아예 없는 건도 있어서,
+    표시해 두지 않으면 매일 같은 조회를 반복하게 된다.
+    """
+    todo = [r for r in hist.values() if not r.get("pdf") and not r.get("pdf_checked")]
+    if not todo:
+        return
+    oldest = min((r.get("date") or "9999.99.99") for r in todo)
+    if oldest == "9999.99.99":
+        return
+    start_dot = oldest                      # 2026.08.25
+    start_dash = oldest.replace(".", "-")   # 2026-08-25
+    print(f"  링크 없는 {len(todo)}건 보정 시도 ({start_dash} ~ {TODAY})")
+
+    found = 0
+    by_source = {}
+    for r in todo:
+        by_source.setdefault(r.get("source", ""), []).append(r)
+
+    # --- 한국기업평가 ---
+    if by_source.get("한국기업평가"):
+        try:
+            session.get(KR_LIST_URL, timeout=TIMEOUT)
+            params = [("MENU_ID", "360"), ("CONTENTS_NO", "1"), ("SITE_NO", "2"),
+                      ("COMP_CD", ""), ("STDT", start_dash), ("ENDT", TODAY)] +                      [("SVCTY_CD", c) for c in
+                      ("01", "07", "02", "03", "10", "11", "05", "09", "04", "06", "08")]
+            resp = session.post(
+                "https://www.korearatings.com/ajaxf/frDisclosureSvc/getRatingDisclosureList.do",
+                headers={"Referer": KR_LIST_URL,
+                         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                         "X-Requested-With": "XMLHttpRequest"},
+                data=params, timeout=TIMEOUT)
+            resp.encoding = "utf-8"
+            items = []
+            for v in (resp.json().get("data") or {}).values():
+                if isinstance(v, dict) and "Data" in v:
+                    items.extend(v["Data"])
+            index = {}
+            for it in items:
+                if not (it.get("RTNG_OPN_FILE_NM") or "").strip():
+                    continue
+                index.setdefault(((it.get("COMP_NM") or "").strip(),
+                                  it.get("EVAL_DT") or ""), it)
+            for r in by_source["한국기업평가"]:
+                it = index.get((r.get("company", "").strip(), r.get("date", "")))
+                if it:
+                    r["pdf"] = pdf_link({
+                        "src": "kr", "encFileNm": it["RTNG_OPN_FILE_NM"].strip(),
+                        "encSvcSeqNo": (it.get("SVC_ID") or "").strip(),
+                        "evalNo": str(it.get("EVAL_SEQNO")),
+                        "compCd": (it.get("COMP_CD") or "").strip()})
+                    found += 1
+        except Exception as exc:
+            print(f"    한국기업평가 보정 실패: {type(exc).__name__}: {exc}")
+
+    # --- 한국신용평가 (목록이 기본 5일치라 기간을 지정해 다시 받는다) ---
+    if by_source.get("한국신용평가"):
+        try:
+            resp = session.post(KIS_LIST_URL,
+                                data={"tabType": "0", "searchYn": "Y",
+                                      "startDt": start_dot, "endDt": TODAY.replace("-", ".")},
+                                headers={"Referer": KIS_LIST_URL}, timeout=TIMEOUT)
+            resp.raise_for_status()
+            resp.encoding = "utf-8"
+            index = {}
+            for menu_cd, gubun, title, fname, kind, wdate in KIS_PDF_RE.findall(resp.text):
+                index.setdefault((title.strip(), wdate), {
+                    "src": "kis", "menuCd": menu_cd, "gubun": gubun, "title": title.strip(),
+                    "file": fname, "writedate": wdate, "kind": kind.strip()})
+            for r in by_source["한국신용평가"]:
+                meta = index.get((r.get("company", "").strip(),
+                                  r.get("date", "").replace(".", "")))
+                if meta:
+                    r["pdf"] = pdf_link(meta)
+                    found += 1
+        except Exception as exc:
+            print(f"    한국신용평가 보정 실패: {type(exc).__name__}: {exc}")
+
+    # --- NICE (목록에서 cmpCd 를 얻고 기업 상세에서 의견서를 찾는다) ---
+    if by_source.get("NICE신용평가"):
+        try:
+            resp = session.get(NICE_LIST_URL,
+                               params=[("today", TODAY), ("cmpCd", ""),
+                                       ("strDate", start_dash), ("endDate", TODAY),
+                                       ("ratingGubn", "RO"), ("searchType", "0")],
+                               timeout=TIMEOUT)
+            resp.raise_for_status()
+            resp.encoding = "utf-8"
+            codes = {nm.strip(): cd for cd, nm in NICE_CMP_RE.findall(resp.text)}
+            for r in by_source["NICE신용평가"]:
+                cmp_cd = codes.get(r.get("company", "").strip())
+                if not cmp_cd:
+                    continue
+                d = session.get(NICE_COMP_URL, params={"cmpCd": cmp_cd},
+                                headers={"Referer": NICE_LIST_URL}, timeout=TIMEOUT)
+                d.raise_for_status()
+                d.encoding = "utf-8"
+                for block in re.findall(r"<tr[^>]*>.*?</tr>", d.text, flags=re.S):
+                    if r.get("date", "") not in block:
+                        continue
+                    hit = next((doc for doc, alt in NICE_PDF_RE.findall(block)
+                                if NICE_PDF_KIND in alt), None)
+                    if hit:
+                        r["pdf"] = pdf_link({"src": "nice", "docId": hit})
+                        found += 1
+                        break
+        except Exception as exc:
+            print(f"    NICE 보정 실패: {type(exc).__name__}: {exc}")
+
+    for r in todo:
+        r["pdf_checked"] = TODAY
+    print(f"  링크 {found}건 보정 완료 (나머지 {len(todo) - found}건은 의견서 없음)")
+
+
 def write_html(hist: dict, errors, path="report.html") -> None:
     """휴대폰에서 볼 수 있는 정적 리포트. 템플릿의 자리표시자에 JSON 을 끼워 넣는다."""
     tpl = Path("report_template.html")
@@ -903,6 +1024,7 @@ def main() -> int:
         link = pdf_link((d.get("pdfs") or [None])[0])
         if link:
             rec["pdf"] = link
+    backfill_pdf_links(session, hist)
     save_history(hist)
     write_html(hist, errors)
 
