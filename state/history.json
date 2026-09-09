@@ -19,6 +19,10 @@
   "kind": "등급하향",
   "new_outlook": "",
   "new_rating": "D",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.nicerating.com/common/fileDown.do?docId=c925b29f-e4c0-4e7e-8968-7b27b508a98a"
+  },
   "prev_outlook": "",
   "prev_rating": "CCC↓",
   "source": "NICE신용평가"
