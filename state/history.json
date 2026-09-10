@@ -7,6 +7,11 @@
   "kind": "전망변경",
   "new_outlook": "Negative",
   "new_rating": "A-",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.nicerating.com/common/fileDown.do?docId=5d5134c2-0dc4-4e5d-b905-8e6b73b7518e"
+  },
+  "pdf_checked": "2026-09-10",
   "prev_outlook": "Stable",
   "prev_rating": "A-",
   "source": "NICE신용평가"
@@ -27,6 +32,22 @@
   "prev_rating": "CCC↓",
   "source": "NICE신용평가"
  },
+ "NICE신용평가|일신건영(주)|2026.09.09|BB+|BB+|Positive|Stable": {
+  "company": "일신건영(주)",
+  "date": "2026.09.09",
+  "eval_type": "수시",
+  "first_seen": "2026-09-10",
+  "kind": "전망변경",
+  "new_outlook": "Stable",
+  "new_rating": "BB+",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.nicerating.com/common/fileDown.do?docId=43da1e77-acb2-47cf-995d-98d84e09259e"
+  },
+  "prev_outlook": "Positive",
+  "prev_rating": "BB+",
+  "source": "NICE신용평가"
+ },
  "한국기업평가|에이치와이중앙제일차(주)|2026.08.31|C|D||": {
   "company": "에이치와이중앙제일차(주)",
   "date": "2026.08.31",
@@ -35,6 +56,11 @@
   "kind": "등급하향",
   "new_outlook": "",
   "new_rating": "D",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=y8eNkNxYmNePBhQRifgvxxIoCHosQZS8zbesJAyAy.o=&encSvcSeqNo=.PHSA5IyLrqlpG.PHYebsA==&evalNo=4&rptNo=03&fileName=&compCd=216746&compNm="
+  },
+  "pdf_checked": "2026-09-10",
   "prev_outlook": "",
   "prev_rating": "C",
   "source": "한국기업평가"
@@ -47,6 +73,19 @@
   "kind": "전망변경",
   "new_outlook": "부정적",
   "new_rating": "BBB+",
+  "pdf": {
+   "fields": {
+    "fileName": "rs20260901-11.pdf",
+    "fileTitle": "동화기업",
+    "freeYn": "",
+    "gubun": "2",
+    "menuCd": "R8",
+    "writedate": "20260831"
+   },
+   "method": "post",
+   "url": "https://www.kisrating.com/fileDown.do"
+  },
+  "pdf_checked": "2026-09-10",
   "prev_outlook": "안정적",
   "prev_rating": "BBB+",
   "source": "한국신용평가"
