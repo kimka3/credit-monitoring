@@ -48,6 +48,22 @@
   "prev_rating": "BB+",
   "source": "NICE신용평가"
  },
+ "한국기업평가|금호타이어(주)|2026.09.10|A|A+|긍정적|안정적": {
+  "company": "금호타이어(주)",
+  "date": "2026.09.10",
+  "eval_type": "수시",
+  "first_seen": "2026-09-11",
+  "kind": "등급상향",
+  "new_outlook": "안정적",
+  "new_rating": "A+",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=FC6uzYldNRK3ZoqNFhWe2GACLhL@CKUcjbHad2xJdr8=&encSvcSeqNo=rv@wwq5SafOMzklrorxUqg==&evalNo=3&rptNo=03&fileName=&compCd=302361&compNm="
+  },
+  "prev_outlook": "긍정적",
+  "prev_rating": "A",
+  "source": "한국기업평가"
+ },
  "한국기업평가|에이치와이중앙제일차(주)|2026.08.31|C|D||": {
   "company": "에이치와이중앙제일차(주)",
   "date": "2026.08.31",
