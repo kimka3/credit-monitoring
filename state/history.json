@@ -32,6 +32,22 @@
   "prev_rating": "CCC↓",
   "source": "NICE신용평가"
  },
+ "NICE신용평가|금호타이어(주)|2026.09.11|A|A+|Positive|Stable": {
+  "company": "금호타이어(주)",
+  "date": "2026.09.11",
+  "eval_type": "수시",
+  "first_seen": "2026-09-14",
+  "kind": "등급상향",
+  "new_outlook": "Stable",
+  "new_rating": "A+",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.nicerating.com/common/fileDown.do?docId=3493a760-b453-4e51-99e7-e7873db79dc9"
+  },
+  "prev_outlook": "Positive",
+  "prev_rating": "A",
+  "source": "NICE신용평가"
+ },
  "NICE신용평가|일신건영(주)|2026.09.09|BB+|BB+|Positive|Stable": {
   "company": "일신건영(주)",
   "date": "2026.09.09",
@@ -64,6 +80,38 @@
   "prev_rating": "A",
   "source": "한국기업평가"
  },
+ "한국기업평가|신보2024제11차유동화전문(유)|2026.09.11|C|D||": {
+  "company": "신보2024제11차유동화전문(유)",
+  "date": "2026.09.11",
+  "eval_type": "수시",
+  "first_seen": "2026-09-14",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "D",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=vgdRs45qE0@oWqWqWtnGMGFp.gVR50B0MOLtuzmtP6s=&encSvcSeqNo=@xEBqNlBbcUgXHvyHvdVMg==&evalNo=3&rptNo=03&fileName=&compCd=222683&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "C",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|신보2024제12차유동화전문(유)|2026.09.11|C|D||": {
+  "company": "신보2024제12차유동화전문(유)",
+  "date": "2026.09.11",
+  "eval_type": "수시",
+  "first_seen": "2026-09-14",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "D",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=a0RIDZAh93eSe50zJs4C08dvwfVPGinYDEHndZ.enRQ=&encSvcSeqNo=FuBQqPJKNyavqMTs8Ie09g==&evalNo=3&rptNo=03&fileName=&compCd=222684&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "C",
+  "source": "한국기업평가"
+ },
  "한국기업평가|에이치와이중앙제일차(주)|2026.08.31|C|D||": {
   "company": "에이치와이중앙제일차(주)",
   "date": "2026.08.31",
@@ -79,6 +127,22 @@
   "pdf_checked": "2026-09-10",
   "prev_outlook": "",
   "prev_rating": "C",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|패션그룹형지(주)|2026.09.10|B+|B-|부정적|부정적": {
+  "company": "패션그룹형지(주)",
+  "date": "2026.09.10",
+  "eval_type": "수시",
+  "first_seen": "2026-09-14",
+  "kind": "등급하향",
+  "new_outlook": "부정적",
+  "new_rating": "B-",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=AeTbI5@E1RrkWSOrOwX9mUBrTg.F@EJx0AtNYpqo1@c=&encSvcSeqNo=5P854MQbaUjwfMBf4vtzxA==&evalNo=3&rptNo=03&fileName=&compCd=304651&compNm="
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "B+",
   "source": "한국기업평가"
  },
  "한국신용평가|동화기업|2026.08.31|BBB+|BBB+|안정적|부정적": {
