@@ -64,6 +64,22 @@
   "prev_rating": "BB+",
   "source": "NICE신용평가"
  },
+ "한국기업평가|2023기보제일차유동화전문(유)|2026.09.17|C|D||": {
+  "company": "2023기보제일차유동화전문(유)",
+  "date": "2026.09.17",
+  "eval_type": "수시",
+  "first_seen": "2026-09-18",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "D",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=7nGDQnuFc3wm9PUPSXkIQQePFE97cvoj99mrC2rU3K0=&encSvcSeqNo=gFTL0K.9n1ppAGSgFBOCKg==&evalNo=4&rptNo=03&fileName=&compCd=216717&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "C",
+  "source": "한국기업평가"
+ },
  "한국기업평가|금호타이어(주)|2026.09.10|A|A+|긍정적|안정적": {
   "company": "금호타이어(주)",
   "date": "2026.09.10",
