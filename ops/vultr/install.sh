@@ -46,6 +46,11 @@ GITHUB_TOKEN="$token" \
 
 systemctl daemon-reload
 systemctl enable --now credit-monitor-trigger.timer
+if ! systemctl is-active --quiet credit-monitor-trigger.timer; then
+  printf 'The timer could not be started.\n' >&2
+  systemctl --no-pager status credit-monitor-trigger.timer || true
+  exit 1
+fi
 
 printf '\nInstalled successfully.\n'
 systemctl --no-pager status credit-monitor-trigger.timer || true

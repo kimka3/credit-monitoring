@@ -3,7 +3,11 @@ Description=Run credit-monitoring on Korean weekday mornings
 
 [Timer]
 # UTC Sunday-Thursday 23:27 is KST Monday-Friday 08:27.
-OnCalendar=Sun..Thu *-*-* 23:27:00 UTC
+OnCalendar=Sun *-*-* 23:27:00 UTC
+OnCalendar=Mon *-*-* 23:27:00 UTC
+OnCalendar=Tue *-*-* 23:27:00 UTC
+OnCalendar=Wed *-*-* 23:27:00 UTC
+OnCalendar=Thu *-*-* 23:27:00 UTC
 AccuracySec=30s
 RandomizedDelaySec=0
 Persistent=false
