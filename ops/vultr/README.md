@@ -23,5 +23,5 @@ journalctl -u credit-monitor-trigger.service --since today
 스크립트도 한국시간 평일과 08:00~09:29를 확인하므로 비정상적으로 늦은 호출은
 건너뛴다. `--force`는 설치 검증 같은 명시적 수동 실행에만 사용한다.
 
-Vultr 호출이 실제로 성공한 것을 확인한 뒤에만 `.github/workflows/daily.yml`의
-`schedule` 항목을 제거하고 `workflow_dispatch`만 유지한다.
+2026-09-29 실제 Vultr 호출에서 모니터링·이력 처리·Pages 배포까지 성공한 뒤
+GitHub의 `schedule` 항목을 제거했으며 `workflow_dispatch`만 유지한다.
