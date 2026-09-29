@@ -1,0 +1,21 @@
+[Unit]
+Description=Trigger the credit-monitoring GitHub Actions workflow
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/credit-monitoring.env
+ExecStart=/usr/local/libexec/credit-monitoring/trigger-credit-monitor.sh
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+UMask=0077

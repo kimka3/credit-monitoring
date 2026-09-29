@@ -1,0 +1,13 @@
+[Unit]
+Description=Run credit-monitoring on Korean weekday mornings
+
+[Timer]
+# UTC Sunday-Thursday 23:27 is KST Monday-Friday 08:27.
+OnCalendar=Sun..Thu *-*-* 23:27:00 UTC
+AccuracySec=30s
+RandomizedDelaySec=0
+Persistent=false
+Unit=credit-monitor-trigger.service
+
+[Install]
+WantedBy=timers.target
