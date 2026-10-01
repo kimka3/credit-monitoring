@@ -64,6 +64,38 @@
   "prev_rating": "BB+",
   "source": "NICE신용평가"
  },
+ "한국기업평가|(주)애큐온캐피탈|2026.10.01|A2|A2||": {
+  "company": "(주)애큐온캐피탈",
+  "date": "2026.10.01",
+  "eval_type": "수시",
+  "first_seen": "2026-10-02",
+  "kind": "변경",
+  "new_outlook": "",
+  "new_rating": "A2",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=U@xrVBPNPVJ@jVNpib9CR2Bucv6UmAdtzk6rzdgZmzY=&encSvcSeqNo=V.dn4lfXnRVSGZ@gfYB@5w==&evalNo=2&rptNo=03&fileName=&compCd=802422&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "A2",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|(주)애큐온캐피탈|2026.10.01|A|A|안정적|": {
+  "company": "(주)애큐온캐피탈",
+  "date": "2026.10.01",
+  "eval_type": "수시",
+  "first_seen": "2026-10-02",
+  "kind": "변경",
+  "new_outlook": "",
+  "new_rating": "A",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=U@xrVBPNPVJ@jVNpib9CR2Bucv6UmAdtzk6rzdgZmzY=&encSvcSeqNo=8tFDAkRTc6kptiVbGJ6j4A==&evalNo=4&rptNo=03&fileName=&compCd=802422&compNm="
+  },
+  "prev_outlook": "안정적",
+  "prev_rating": "A",
+  "source": "한국기업평가"
+ },
  "한국기업평가|2023기보제일차유동화전문(유)|2026.09.17|C|D||": {
   "company": "2023기보제일차유동화전문(유)",
   "date": "2026.09.17",
@@ -123,6 +155,22 @@
   "pdf": {
    "method": "get",
    "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=a0RIDZAh93eSe50zJs4C08dvwfVPGinYDEHndZ.enRQ=&encSvcSeqNo=FuBQqPJKNyavqMTs8Ie09g==&evalNo=3&rptNo=03&fileName=&compCd=222684&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "C",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|신보2024제14차유동화전문(유)|2026.10.01|C|D||": {
+  "company": "신보2024제14차유동화전문(유)",
+  "date": "2026.10.01",
+  "eval_type": "수시",
+  "first_seen": "2026-10-02",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "D",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=Qz2vg1@Ojw2yFXa88RoghyAGMOF5XBkmDSAyemRbDRc=&encSvcSeqNo=PYNysiPGuYLml3XySaOb3Q==&evalNo=3&rptNo=03&fileName=&compCd=227286&compNm="
   },
   "prev_outlook": "",
   "prev_rating": "C",
