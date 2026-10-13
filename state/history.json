@@ -160,6 +160,54 @@
   "prev_rating": "A",
   "source": "한국기업평가"
  },
+ "한국기업평가|롯데손해보험(주)|2026.10.13|A-|A-|부정적|": {
+  "company": "롯데손해보험(주)",
+  "date": "2026.10.13",
+  "eval_type": "수시",
+  "first_seen": "2026-10-14",
+  "kind": "변경",
+  "new_outlook": "",
+  "new_rating": "A-",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=eWUO4DrDPN6RXqvnU4BYTA4lHf0pX0DL7zD0QZUfo1E=&encSvcSeqNo=5Qg5MNuhsbw7f.bhoRsMUA==&evalNo=4&rptNo=03&fileName=&compCd=801438&compNm="
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "A-",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|롯데손해보험(주)|2026.10.13|BBB+|BBB+|부정적|": {
+  "company": "롯데손해보험(주)",
+  "date": "2026.10.13",
+  "eval_type": "수시",
+  "first_seen": "2026-10-14",
+  "kind": "변경",
+  "new_outlook": "",
+  "new_rating": "BBB+",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=eWUO4DrDPN6RXqvnU4BYTA4lHf0pX0DL7zD0QZUfo1E=&encSvcSeqNo=RjBGsi3u3nBut8.6YLNPsA==&evalNo=12&rptNo=03&fileName=&compCd=801438&compNm="
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "BBB+",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|롯데손해보험(주)|2026.10.13|BBB|BBB|부정적|": {
+  "company": "롯데손해보험(주)",
+  "date": "2026.10.13",
+  "eval_type": "수시",
+  "first_seen": "2026-10-14",
+  "kind": "변경",
+  "new_outlook": "",
+  "new_rating": "BBB",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=eWUO4DrDPN6RXqvnU4BYTA4lHf0pX0DL7zD0QZUfo1E=&encSvcSeqNo=3KzbIH7td1fRmryqv8mb7g==&evalNo=10&rptNo=03&fileName=&compCd=801438&compNm="
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "BBB",
+  "source": "한국기업평가"
+ },
  "한국기업평가|신보2024제11차유동화전문(유)|2026.09.11|C|D||": {
   "company": "신보2024제11차유동화전문(유)",
   "date": "2026.09.11",
@@ -264,6 +312,54 @@
   "pdf_checked": "2026-09-10",
   "prev_outlook": "안정적",
   "prev_rating": "BBB+",
+  "source": "한국신용평가"
+ },
+ "한국신용평가|롯데손해보험|2026.10.13|BBB+|BBB+↑|부정적|": {
+  "company": "롯데손해보험",
+  "date": "2026.10.13",
+  "eval_type": "수시",
+  "first_seen": "2026-10-14",
+  "kind": "검토변경",
+  "new_outlook": "",
+  "new_rating": "BBB+↑",
+  "pdf": {
+   "fields": {
+    "fileName": "rs20261013-31.pdf",
+    "fileTitle": "롯데손해보험",
+    "freeYn": "",
+    "gubun": "2",
+    "menuCd": "R8",
+    "writedate": "20261013"
+   },
+   "method": "post",
+   "url": "https://www.kisrating.com/fileDown.do"
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "BBB+",
+  "source": "한국신용평가"
+ },
+ "한국신용평가|롯데손해보험|2026.10.13|BBB|BBB↑|부정적|": {
+  "company": "롯데손해보험",
+  "date": "2026.10.13",
+  "eval_type": "수시",
+  "first_seen": "2026-10-14",
+  "kind": "검토변경",
+  "new_outlook": "",
+  "new_rating": "BBB↑",
+  "pdf": {
+   "fields": {
+    "fileName": "rs20261013-31.pdf",
+    "fileTitle": "롯데손해보험",
+    "freeYn": "",
+    "gubun": "2",
+    "menuCd": "R8",
+    "writedate": "20261013"
+   },
+   "method": "post",
+   "url": "https://www.kisrating.com/fileDown.do"
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "BBB",
   "source": "한국신용평가"
  }
 }
