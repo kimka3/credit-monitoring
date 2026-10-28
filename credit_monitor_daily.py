@@ -111,22 +111,31 @@ class StructureError(RuntimeError):
 
 
 class TableParser(HTMLParser):
-    def __init__(self):
+    def __init__(self, expand_colspans=False):
         super().__init__()
         self.rows, self._row, self._cell, self._in = [], [], "", False
+        self.expand_colspans = expand_colspans
+        self._colspan = 1
+        self.row_links, self._links = [], []
 
     def handle_starttag(self, tag, attrs):
         if tag == "tr":
             self._row = []
+            self._links = []
         elif tag in ("td", "th"):
             self._in, self._cell = True, ""
+            self._colspan = int(dict(attrs).get("colspan") or 1) if self.expand_colspans else 1
+        elif tag == "a":
+            self._links.append(dict(attrs).get("href") or "")
 
     def handle_endtag(self, tag):
         if tag in ("td", "th"):
             self._row.append(self._cell.strip())
+            self._row.extend([""] * (self._colspan - 1))
             self._in = False
         elif tag == "tr" and self._row:
             self.rows.append(self._row)
+            self.row_links.append(self._links)
 
     def handle_data(self, data):
         if self._in:
@@ -392,13 +401,15 @@ def fetch_kis(session):
     r = session.get(KIS_LIST_URL, timeout=TIMEOUT)
     r.raise_for_status()
     r.encoding = "utf-8"
-    p = TableParser()
+    # Issuer Rating/보험금지급능력평가 헤더는 직전·현재가 각각
+    # 등급과 Outlook 두 열을 차지한다. colspan을 펼쳐 실제 데이터 열에 맞춘다.
+    p = TableParser(expand_colspans=True)
     p.feed(r.text)
     if not p.rows:
         raise StructureError("표 행을 하나도 찾지 못했습니다 (페이지 구조 변경 또는 차단)")
 
     results, colmap, last_entry = [], None, None
-    for row in p.rows:
+    for row, links in zip(p.rows, p.row_links):
         cells = [c.strip() for c in row]
 
         if "회사명" in cells:
@@ -414,6 +425,9 @@ def fetch_kis(session):
                     colmap["date"] = i
                 elif c == "평가종류":
                     colmap["type"] = i
+            if "기준통화" in cells and "prev" in colmap and "cur" in colmap:
+                colmap["prev_outlook"] = colmap["prev"] + 1
+                colmap["new_outlook"] = colmap["cur"] + 1
             last_entry = None
             continue
 
@@ -434,6 +448,9 @@ def fetch_kis(session):
         prev_r = cells[colmap["prev"]] if "prev" in colmap else ""
         date = cells[colmap["date"]] if "date" in colmap else ""
 
+        if company and any(is_date(c) for c in cells) and not is_date(date):
+            raise StructureError(f"평가일 열이 맞지 않습니다 ({company}, 표 구조 변경)")
+
         if not company or not is_valid_rating(new_r) or not is_date(date):
             last_entry = None
             continue
@@ -441,32 +458,29 @@ def fetch_kis(session):
         entry = {
             "source": "한국신용평가", "company": company,
             "prev_rating": prev_r if is_valid_rating(prev_r) else "",
-            "new_rating": new_r, "prev_outlook": "", "new_outlook": "",
+            "new_rating": new_r,
+            "prev_outlook": cells[colmap["prev_outlook"]] if "prev_outlook" in colmap else "",
+            "new_outlook": cells[colmap["new_outlook"]] if "new_outlook" in colmap else "",
             "date": date,
             "eval_type": cells[colmap["type"]] if "type" in colmap else "",
             "change_code": "",
+            "pdfs": [],
         }
+        # 같은 회사·날짜에도 CP/단기사채/Issuer 의견서는 서로 다르다.
+        # 이번 평가 행에 연결된 문서만 사용한다.
+        by_kind = {}
+        for href in links:
+            for menu_cd, gubun, title, fname, kind, wdate in KIS_PDF_RE.findall(href):
+                if title.strip() == company and wdate == date.replace(".", ""):
+                    by_kind.setdefault(kind.strip(), {
+                        "menuCd": menu_cd, "gubun": gubun, "title": title.strip(),
+                        "file": fname, "writedate": wdate, "kind": kind.strip()})
+        entry["pdfs"] = list(by_kind.values())[:MAX_PDF_PER_ITEM]
         results.append(entry)
         last_entry = entry
 
     if colmap is None:
         raise StructureError("'회사명' 헤더를 찾지 못했습니다 (표 구조 변경)")
-
-    # 같은 페이지에 리포트 PDF 버튼이 함께 있다. 회사명과 발행일이 정확히
-    # 맞는 것만 붙인다. 최근 것을 아무거나 붙이면 이번 변동과 무관한 리포트가
-    # 딸려가므로, 애매하면 안 붙이는 편이 낫다.
-    # 한 회사·한 날짜에 회차만 다른 리포트가 여럿 걸린다. 실측하면 내용이
-    # 사실상 같은 문서라(96바이트 차이) 여러 개를 보내면 같은 PDF 가 반복해서
-    # 온다. 문서 종류(Rating Summary 등)별로 하나씩만 남긴다.
-    pdf_map = {}
-    for menu_cd, gubun, title, fname, kind, wdate in KIS_PDF_RE.findall(r.text):
-        bucket = pdf_map.setdefault((title.strip(), wdate), {})
-        bucket.setdefault(kind.strip(), {
-            "menuCd": menu_cd, "gubun": gubun, "title": title.strip(),
-            "file": fname, "writedate": wdate, "kind": kind.strip()})
-    for e in results:
-        by_kind = pdf_map.get((e["company"].strip(), e["date"].replace(".", "")), {})
-        e["pdfs"] = list(by_kind.values())[:MAX_PDF_PER_ITEM]
 
     changed = filter_changes(results)
     n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
