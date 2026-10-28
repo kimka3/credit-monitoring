@@ -892,9 +892,7 @@ def format_plain(changes):
 def send_tg(msg: str) -> None:
     """실패하면 예외를 올린다. 조용히 넘기면 메시지가 안 갔는데도 초록불이 된다."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("\n" + "=" * 60 + f"\n{msg}\n" + "=" * 60)
-        print("  (텔레그램 시크릿이 없어 화면 출력으로 대체)")
-        return
+        raise RuntimeError("텔레그램 설정 누락: 전송하지 않은 공시를 발송 완료로 기록할 수 없습니다")
 
     for i in range(0, len(msg), 4000):
         r = requests.post(

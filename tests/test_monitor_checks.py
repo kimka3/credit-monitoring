@@ -180,3 +180,9 @@ class RuntimeIntegrityTests(unittest.TestCase):
         path.write_text('const DATA = '+json.dumps({'records':[ROW]})+';\n',encoding='utf-8')
         with self.assertRaises(checks.IntegrityError):
             checks.verify_persisted([ROW],m.HISTORY_PATH,m.STATE_PATH,path,m.item_key,m.notification_key,m.RECORD_FIELDS)
+
+
+class DeliveryConfigurationTests(unittest.TestCase):
+    def test_missing_telegram_configuration_is_a_failure(self):
+        with patch.multiple(m, TELEGRAM_BOT_TOKEN='', TELEGRAM_CHAT_ID=''), self.assertRaises(RuntimeError):
+            m.send_tg('신용등급 알림')
