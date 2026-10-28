@@ -67,7 +67,7 @@ class WatchTests(unittest.TestCase):
             self.assertEqual(m.notification_key(again),m.notification_key(row))
 
     def test_kr_bad_schema_fails(self):
-        with self.assertRaises(m.StructureError):
+        with self.assertRaises(m.IntegrityError):
             m.fetch_kr_watch(Session(data={'data':{}}))
 
     def test_active_watch_alone_is_not_a_new_change(self):
@@ -91,7 +91,7 @@ class WatchTests(unittest.TestCase):
             sp,hp=root/'sent.json',root/'history.json'
             sp.write_text(json.dumps({m.item_key(OLD):'2026-10-02'}),encoding='utf-8')
             hp.write_text(json.dumps({m.item_key(OLD):OLD}),encoding='utf-8')
-            with patch.multiple(m,STATE_PATH=sp,HISTORY_PATH=hp):
+            with patch.multiple(m,STATE_PATH=sp,HISTORY_PATH=hp,HEALTH_PATH=root/'health.json'):
                 kr=m.fetch_kr_watch(Session(data=KR))
                 nice=m.fetch_nice_watch(Session(NICE))
                 write=m.write_html

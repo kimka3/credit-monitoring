@@ -38,6 +38,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
+from monitor_checks import (IntegrityError, read_json, write_json, json_tables, validate_html_count,
+    validate_kis_count, verify_selection, verify_persisted, pending_alerts, update_health, volume_issues)
 
 # --- 환경 ---
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -48,15 +50,17 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 KST = ZoneInfo("Asia/Seoul")
 NOW = datetime.now(KST)
 TODAY = NOW.strftime("%Y-%m-%d")
-WEEK_AGO = (NOW - timedelta(days=7)).strftime("%Y-%m-%d")
+WEEK_AGO = (NOW - timedelta(days=30)).strftime("%Y-%m-%d")
 # NICE 는 간헐적으로 실패해서 14일을 훑는다. 중복은 state 로 걸러지므로
 # 하루 실패해도 다음 날 자동으로 복구된다.
-NICE_FROM = (NOW - timedelta(days=14)).strftime("%Y-%m-%d")
+NICE_FROM = WEEK_AGO
 WATCH_FROM = (NOW - timedelta(days=30)).strftime("%Y.%m.%d")
 
 STATE_PATH = Path("state/sent.json")
 STATE_KEEP_DAYS = 45          # 조회 구간(14일)보다 넉넉히
 HISTORY_PATH = Path("state/history.json")
+HEALTH_PATH = Path("state/health.json")
+SOURCE_STATS = {}
 HISTORY_KEEP_DAYS = 180       # 웹 리포트에 쌓아 보여줄 기간
 TIMEOUT = (30, 60)            # (연결, 읽기)
 RETRIES = 3
@@ -109,7 +113,7 @@ NICE_PDF_RE = re.compile(
 NICE_PDF_KIND = "의견서"
 
 
-class StructureError(RuntimeError):
+class StructureError(IntegrityError):
     """페이지에서 행을 하나도 못 뽑은 경우.
 
     조용히 0건으로 넘기면 '변동 없음'이라는 좋은 소식처럼 보인다.
@@ -156,6 +160,22 @@ def is_valid_rating(s: str) -> bool:
 
 def is_date(s: str) -> bool:
     return bool(re.match(r"\d{4}\.\d{2}\.\d{2}", s or ""))
+
+
+def checked_changes(rows, label):
+    selected = filter_changes(rows)
+    verify_selection(rows, selected, item_key, label)
+    SOURCE_STATS[label] = {"parsed": len(rows), "changes": len(selected)}
+    SOURCE_STATS[label]["latest_date"] = max((r.get("date", "") for r in rows), default="")
+    return selected
+
+
+def valid_previous(value, label):
+    if value in ("", "-", "—", "취소", "NR", "N/R"):
+        return ""
+    if not is_valid_rating(value):
+        raise StructureError(f"{label}: 알 수 없는 직전등급 {value!r}")
+    return value
 
 
 def filter_changes(results):
@@ -264,6 +284,8 @@ def item_key(d) -> str:
     ])
     if d.get("event_type") == "watch_registration":
         key += "|watch|" + d.get("instrument", "")
+    elif d.get("instrument") in ("SF", "유동화익스포져"):
+        key += "|instrument:" + d["instrument"]
     return key
 
 
@@ -286,14 +308,7 @@ def watch_name(value):
 #  전송 이력 (실행 간 중복 제거)
 # --------------------------------------------------------------------------
 def load_state() -> dict:
-    if not STATE_PATH.exists():
-        return {}
-    try:
-        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    except Exception as exc:
-        # 이력이 깨졌다고 알림을 멈출 수는 없다. 비우고 계속하되 알린다.
-        print(f"  [warn] 전송 이력을 읽지 못해 새로 시작합니다: {type(exc).__name__}")
-        return {}
+    return read_json(STATE_PATH, {})
 
 
 def load_history() -> dict:
@@ -303,11 +318,7 @@ def load_history() -> dict:
     보여줄 내용이라 더 오래, 더 자세히 남긴다.
     """
     if HISTORY_PATH.exists():
-        try:
-            return json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
-        except Exception as exc:
-            print(f"  이력 파일을 읽지 못해 새로 시작합니다: {exc}")
-            return {}
+        return read_json(HISTORY_PATH, {})
 
     # 첫 실행: 전송 이력의 키를 되살려 빈 화면으로 시작하지 않게 한다.
     seeded = {}
@@ -330,8 +341,7 @@ def save_history(hist: dict) -> None:
     cutoff = (NOW - timedelta(days=HISTORY_KEEP_DAYS)).strftime("%Y-%m-%d")
     pruned = {k: v for k, v in hist.items() if (v.get("first_seen") or "") >= cutoff}
     HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    HISTORY_PATH.write_text(
-        json.dumps(pruned, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+    write_json(HISTORY_PATH, pruned)
     print(f"  변동 이력 {len(pruned)}건 저장 (만료 {len(hist) - len(pruned)}건 정리)")
 
 
@@ -339,8 +349,7 @@ def save_state(state: dict) -> None:
     cutoff = (NOW - timedelta(days=STATE_KEEP_DAYS)).strftime("%Y-%m-%d")
     pruned = {k: v for k, v in state.items() if v >= cutoff}
     STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    STATE_PATH.write_text(
-        json.dumps(pruned, ensure_ascii=False, indent=1, sort_keys=True), encoding="utf-8")
+    write_json(STATE_PATH, pruned)
     print(f"  전송 이력 {len(pruned)}건 저장 (만료 {len(state) - len(pruned)}건 정리)")
 
 
@@ -374,25 +383,24 @@ def fetch_kr(session):
     if not isinstance(blocks, dict) or not blocks:
         raise StructureError("응답에 data 블록이 없습니다 (API 변경 또는 차단)")
 
-    all_items = []
-    for val in blocks.values():
-        if isinstance(val, dict) and "Data" in val:
-            all_items.extend(val["Data"])
+    all_items = json_tables(blocks, "한국기업평가")
 
     results, n_cancel = [], 0
     for item in all_items:
         new_rating = (item.get("CUR_GRD_NM_ORG") or "").strip()
         if not new_rating:
-            continue
+            raise StructureError("한국기업평가: 현재등급 필드 누락")
         # 취소 건 제외 — 증권사 ELB/DLB 개별 회차 만기상환에 따른 등급 소멸이
         # 대부분이라 회사 등급 취소가 아니다. 전량 노이즈.
         if new_rating == "취소":
             n_cancel += 1
             continue
+        if not is_valid_rating(new_rating) or not item.get("COMP_NM") or not is_date(item.get("EVAL_DT") or item.get("DSCLS_DTTM") or ""):
+            raise StructureError("한국기업평가: 회사/등급/평가일 필드 변경")
         results.append({
             "source": "한국기업평가",
             "company": (item.get("COMP_NM") or "").strip(),
-            "prev_rating": (item.get("RBF_GRD_NM_ORG") or "").strip(),
+            "prev_rating": valid_previous((item.get("RBF_GRD_NM_ORG") or "").strip(), "한국기업평가"),
             "new_rating": new_rating,
             "prev_outlook": (item.get("BFR_OL_NM") or "").strip(),
             "new_outlook": (item.get("OL_NM") or "").strip(),
@@ -407,7 +415,8 @@ def fetch_kr(session):
             "comp_cd": (item.get("COMP_CD") or "").strip(),
         })
 
-    changed = filter_changes(results)
+    changed = checked_changes(results, "한국기업평가")
+    SOURCE_STATS["한국기업평가"].update(raw=len(all_items), excluded_cancel=n_cancel)
     attach_kr_pdfs(changed)
     n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
     print(f"  [한국기업평가] 원본 {len(all_items)}건 -> 취소 제외 {n_cancel}건 "
@@ -438,7 +447,9 @@ def attach_kr_pdfs(changes) -> None:
 # --------------------------------------------------------------------------
 def fetch_kis(session):
     print("  [한국신용평가] 수집 중...")
-    r = session.get(KIS_LIST_URL, timeout=TIMEOUT)
+    r = session.post(KIS_LIST_URL, data={"tabType": "0", "searchYn": "Y",
+        "startDt": WEEK_AGO.replace("-", "."), "endDt": TODAY.replace("-", ".")},
+        timeout=TIMEOUT)
     r.raise_for_status()
     r.encoding = "utf-8"
     # Issuer Rating/보험금지급능력평가 헤더는 직전·현재가 각각
@@ -448,9 +459,11 @@ def fetch_kis(session):
     if not p.rows:
         raise StructureError("표 행을 하나도 찾지 못했습니다 (페이지 구조 변경 또는 차단)")
 
-    results, colmap, last_entry = [], None, None
+    results, colmap, last_entry, raw_count = [], None, None, 0
     for row, links in zip(p.rows, p.row_links):
         cells = [c.strip() for c in row]
+        if any(is_date(c) for c in cells):
+            raw_count += 1
 
         if "회사명" in cells:
             colmap = {}
@@ -472,15 +485,22 @@ def fetch_kis(session):
             continue
 
         if len(cells) <= 4:
+            if any(is_date(c) for c in cells):
+                raise StructureError("한국신용평가: 날짜가 있는 불완전한 행")
             # 전망은 다음 줄에 따로 오는 구조
             if last_entry and len(cells) >= 3:
                 last_entry["prev_outlook"] = cells[0]
                 last_entry["new_outlook"] = cells[2]
             continue
 
+        dated = any(is_date(c) for c in cells)
         if not colmap or "cur" not in colmap or "company" not in colmap:
+            if dated:
+                raise StructureError("한국신용평가: 날짜가 있는 행의 등급 헤더 누락")
             continue
         if max(colmap.values()) >= len(cells):
+            if dated:
+                raise StructureError("한국신용평가: 일부 데이터 행의 열 수 변경")
             continue
 
         company = cells[colmap["company"]]
@@ -491,13 +511,15 @@ def fetch_kis(session):
         if company and any(is_date(c) for c in cells) and not is_date(date):
             raise StructureError(f"평가일 열이 맞지 않습니다 ({company}, 표 구조 변경)")
 
+        if dated and new_r not in ("취소", "NR", "N/R", "-") and (not company or not is_valid_rating(new_r)):
+            raise StructureError(f"한국신용평가: 회사/등급 필드 변경 ({company}: {new_r!r})")
         if not company or not is_valid_rating(new_r) or not is_date(date):
             last_entry = None
             continue
 
         entry = {
             "source": "한국신용평가", "company": company,
-            "prev_rating": prev_r if is_valid_rating(prev_r) else "",
+            "prev_rating": valid_previous(prev_r, "한국신용평가"),
             "new_rating": new_r,
             "prev_outlook": cells[colmap["prev_outlook"]] if "prev_outlook" in colmap else "",
             "new_outlook": cells[colmap["new_outlook"]] if "new_outlook" in colmap else "",
@@ -521,8 +543,12 @@ def fetch_kis(session):
 
     if colmap is None:
         raise StructureError("'회사명' 헤더를 찾지 못했습니다 (표 구조 변경)")
+    if not results and not re.search(r"(조회|검색|해당|평가).{0,25}(없습니다|없음)", r.text):
+        raise StructureError("한국신용평가: 0건을 확인할 명시적 원본 표시가 없습니다")
 
-    changed = filter_changes(results)
+    validate_kis_count(r.text, raw_count)
+    changed = checked_changes(results, "한국신용평가")
+    SOURCE_STATS["한국신용평가"]["raw"] = raw_count
     n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
     print(f"  [한국신용평가] 원본 {len(results)}건 -> 변동 {len(changed)}건, 리포트 {n_pdf}개 매칭")
     return changed
@@ -532,13 +558,13 @@ def fetch_kis(session):
 #  NICE신용평가 (HTML) — 14일 조회
 #  파라미터 없이 호출하면 항상 빈 결과. ratingGubn: R=등급, O=전망, RO=둘다
 # --------------------------------------------------------------------------
-def fetch_nice(session):
+def fetch_nice(session, search_type="0"):
     print("  [NICE신용평가] 수집 중...")
     r = session.get(
         NICE_LIST_URL,
         params=[("today", TODAY), ("cmpCd", ""),
                 ("strDate", NICE_FROM), ("endDate", TODAY),
-                ("ratingGubn", "RO"), ("searchType", "0")],
+                ("ratingGubn", "RO"), ("searchType", search_type)],
         timeout=TIMEOUT)
     r.raise_for_status()
     r.encoding = "utf-8"
@@ -546,21 +572,30 @@ def fetch_nice(session):
     p.feed(r.text)
     if not p.rows:
         raise StructureError("표 행을 하나도 찾지 못했습니다 (페이지 구조 변경 또는 차단)")
+    if not any("기업명" in row and ("확정일" in row or "등급확정일" in row) for row in p.rows):
+        raise StructureError("NICE: 기업명/등급확정일 헤더 누락")
 
     # 상세 페이지 키(cmpCd)는 회사명 링크에만 들어 있어 표 텍스트로는 얻을 수 없다.
     # 리포트를 받으려면 이 키가 필요하다.
     cmp_codes = {nm.strip(): cd for cd, nm in NICE_CMP_RE.findall(r.text)}
 
-    results, n_unknown = [], 0
+    results, raw_count, n_cancel = [], 0, 0
     for row in p.rows:
         cells = [c.strip() for c in row]
         if "기업명" in cells or cells[:2] == ["등급", "전망"]:
             continue
-        if not cells or not is_date(cells[-1]):
+        if not cells or not any(is_date(c) for c in cells):
             continue
+        raw_count += 1
+        if not is_date(cells[-1]):
+            raise StructureError("NICE: 날짜 열 위치 변경")
 
         n = len(cells)
-        if n == 10:
+        if search_type in ("6", "7") and n == 7:
+            e = dict(company=cells[0], eval_type=cells[3], prev_rating=cells[4],
+                     prev_outlook="", new_rating=cells[5], new_outlook="", date=cells[6],
+                     instrument="SF" if search_type == "6" else "유동화익스포져")
+        elif n == 10:
             # 채권: 기업명,회차,상환순위,종류,평정,직전등급,직전전망,현재등급,현재전망,확정일
             e = dict(company=cells[0], eval_type=cells[4],
                      prev_rating=cells[5], prev_outlook=cells[6],
@@ -574,27 +609,35 @@ def fetch_nice(session):
                      prev_rating=cells[2], prev_outlook="",
                      new_rating=cells[3], new_outlook="", date=cells[4])
         else:
-            n_unknown += 1
-            continue
+            raise StructureError(f"NICE: 일부 데이터 행 열 수 변경 ({n}열)")
 
-        if not is_valid_rating(e["new_rating"]):
+        if e["new_rating"] in ("취소", "NR", "N/R", "-"):
+            n_cancel += 1
             continue
-        if e["prev_rating"] and not is_valid_rating(e["prev_rating"]):
-            e["prev_rating"] = ""
+        if not e["company"] or not is_valid_rating(e["new_rating"]):
+            raise StructureError(f"NICE: 회사/등급 필드 변경 ({e['company']}: {e['new_rating']!r})")
+        e["prev_rating"] = valid_previous(e["prev_rating"], "NICE")
         e.update(source="NICE신용평가", change_code="",
                  cmp_cd=cmp_codes.get(e["company"].strip(), ""))
         results.append(e)
 
-    # 날짜로 끝나는 행은 있는데 컬럼 수가 전부 낯설다면 표가 바뀐 것이다.
-    if not results and n_unknown:
-        raise StructureError(f"컬럼 수가 예상과 다릅니다 ({n_unknown}행, 표 구조 변경)")
-
-    changed = filter_changes(results)
+    label = {"0": "NICE신용평가", "6": "NICE SF", "7": "NICE 유동화익스포져"}[search_type]
+    validate_html_count(r.text, raw_count, label)
+    changed = checked_changes(results, label)
+    SOURCE_STATS[label].update(raw=raw_count, excluded_cancel=n_cancel)
     attach_nice_pdfs(session, changed)
     n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
     print(f"  [NICE신용평가] 원본 {len(results)}건 -> 변동 {len(changed)}건"
           f", 리포트 {n_pdf}개 매칭 ({NICE_FROM}~{TODAY})")
     return changed
+
+
+def fetch_nice_sf(session):
+    return fetch_nice(session, "6")
+
+
+def fetch_nice_exposure(session):
+    return fetch_nice(session, "7")
 
 
 def attach_nice_pdfs(session, changes) -> None:
@@ -645,9 +688,11 @@ def fetch_nice_watch(session):
     if not any("등급감시부호" in row and "등록일" in row for row in p.rows):
         raise StructureError("NICE Watch 헤더를 찾지 못했습니다")
     results = []
+    dated_rows = 0
     for cells, links in zip(p.rows, p.row_links):
         if not any(is_date(c) for c in cells):
             continue
+        dated_rows += 1
         if len(cells) != 6 or not is_date(cells[4]) or not is_valid_rating(cells[2]):
             raise StructureError("NICE Watch 데이터 행 구조가 맞지 않습니다")
         if cells[3] not in WATCH_MARKS or not cells[3]:
@@ -667,7 +712,10 @@ def fetch_nice_watch(session):
             event_type="watch_registration", eval_type="Watch 등록",
             source_url=NICE_WATCH_URL, pdfs=[]))
     # Watch 등록일은 이번 평가일과 다를 수 있어 의견서를 임의 매칭하지 않는다.
-    changed = filter_changes(results)
+    if not dated_rows and "등록된 정보가 없습니다." not in r.text:
+        raise StructureError("NICE Watch: 0건을 확인할 명시적 원본 표시가 없습니다")
+    changed = checked_changes(results, "NICE Watch")
+    SOURCE_STATS["NICE Watch"]["raw"] = dated_rows
     print(f"  [NICE Watch] 최근 30일 등록 {len(changed)}건")
     return changed
 
@@ -678,12 +726,10 @@ def fetch_kr_watch(session):
     blocks = r.json().get("data")
     if not isinstance(blocks, dict):
         raise StructureError("한국기업평가 Watch data 블록이 없습니다")
-    tables = [v["Data"] for v in blocks.values() if isinstance(v, dict) and "Data" in v]
-    if not tables:
-        raise StructureError("한국기업평가 Watch Data 목록이 없습니다")
+    items = json_tables(blocks, "한국기업평가 Watch")
     hist = load_history()
     results = []
-    for row in (r for table in tables for r in table):
+    for row in items:
         date = row.get("RGDT") or ""
         if not is_date(date):
             raise StructureError("한국기업평가 Watch 등록일이 없습니다")
@@ -718,6 +764,8 @@ def fetch_kr_watch(session):
     changed = list(by_key.values())
     for x in changed:
         x["kind"] = "검토변경"
+    SOURCE_STATS["한국기업평가 Watch"] = {"raw": len(items), "parsed": len(results), "changes": len(changed)}
+    SOURCE_STATS["한국기업평가 Watch"]["latest_date"] = max((r.get("date", "") for r in results), default="")
     attach_kr_pdfs(changed)
     print(f"  [한국기업평가 Watch] 최근 30일 등록/보완 {len(changed)}건")
     return changed
@@ -731,7 +779,8 @@ def scrape_all():
     session.headers.update(HEADERS)
     all_data, errors = [], []
 
-    for fetcher in (fetch_kr, fetch_kis, fetch_nice, fetch_kr_watch, fetch_nice_watch):
+    for fetcher in (fetch_kr, fetch_kis, fetch_nice, fetch_nice_sf, fetch_nice_exposure,
+                    fetch_kr_watch, fetch_nice_watch):
         last_err = None
         for attempt in range(RETRIES):
             try:
@@ -746,9 +795,13 @@ def scrape_all():
                     time.sleep(RETRY_WAIT)
         if last_err:
             print(f"  최종 실패 [{fetcher.__name__}]: {type(last_err).__name__}: {last_err}")
-            errors.append(f"{fetcher.__name__} ({type(last_err).__name__})")
+            errors.append(f"{fetcher.__name__}: {type(last_err).__name__}: {last_err}")
 
     print(f"\n  === 3사 합계: 변동 {len(all_data)}건, 실패 {len(errors)}곳 ===")
+    required = {"한국기업평가", "한국신용평가", "NICE신용평가", "NICE SF",
+                "NICE 유동화익스포져", "한국기업평가 Watch", "NICE Watch"}
+    for label in sorted(required - SOURCE_STATS.keys()):
+        errors.append(f"{label}: 수집 검증 결과 미완료")
     # 리포트를 같은 세션으로 받아야 쿠키가 유지된다.
     # 공시와 Watch 목록에 함께 있는 건은 검토 정보가 있는 결과를 합친다.
     combined = {}
@@ -1126,9 +1179,15 @@ def write_html(hist: dict, errors, path="report.html") -> None:
         "/*__DATA__*/null", json.dumps(payload, ensure_ascii=False))
     Path(path).write_text(html, encoding="utf-8")
     print(f"  {path} 생성 ({len(records)}건, {len(html):,} bytes)")
+    return Path(path)
 
 
-def main() -> int:
+def run_monitor() -> int:
+    SOURCE_STATS.clear()
+    health = read_json(HEALTH_PATH, {})
+    # 깨진 전송/변동 이력을 비우고 덮어쓰지 않는다.
+    state = load_state()
+    load_history()
     print(f"📊 신용등급 모니터링 v7 — {NOW:%Y-%m-%d %H:%M} KST")
     print(f"   조회: {WEEK_AGO} ~ {TODAY} (NICE: {NICE_FROM} ~ {TODAY})")
     print("=" * 60)
@@ -1137,30 +1196,41 @@ def main() -> int:
     data, errors, session = scrape_all()
 
     print("\n[2/6] 기존 발송분 제외...")
-    state = load_state()
     fresh = [d for d in data if notification_key(d) not in state]
     for d in fresh:
         if d.get("new_watch") and item_key(d) in state:
             d["notification_note"] = "기존 공시의 검토 상태 보완"
     print(f"  변동 {len(data)}건 중 신규 {len(fresh)}건 (기발송 {len(data) - len(fresh)}건 제외)")
 
+    issues = list(errors) + volume_issues(health, SOURCE_STATS, WATCH_FROM)
+    delayed = [r for r in fresh if health.get("last_success")
+               and r.get("date", "").replace(".", "-") < health["last_success"]]
+    if delayed:
+        names = ", ".join(f"{r['company']} [{r['date']}]" for r in delayed[:5])
+        issues.append(f"보충조회에서 미발송 공시 발견 {len(delayed)}건 (지연 공시/누락 가능): {names}")
+    alerts = pending_alerts(health, issues)
+
     print("\n[3/6] 브리핑 작성...")
-    if errors and not data:
-        # 전부 실패했는데 "변동 없음"이라고 하면 좋은 소식으로 오해한다.
-        briefing = (f"⚠️ [{TODAY}] 신용등급 수집 실패\n\n"
-                    f"일부 평가사 또는 수집 항목을 확인하지 못했습니다.\n"
-                    f"실패: {', '.join(errors)}\n\n"
-                    f"등급 변동이 없다는 뜻이 아닙니다. 사이트 구조 변경 여부를 확인하세요.")
-    elif not fresh:
+    if fresh:
+        briefing = analyze(fresh)
+    elif not issues:
         briefing = f"📊 [{TODAY}] 신용등급 변동 브리핑\n\n✅ 신규 등급변동 내역이 없습니다."
     else:
-        briefing = analyze(fresh)
-
-    if errors and data:
-        briefing += "\n\n⚠️ 일부 수집 실패: " + ", ".join(errors)
+        briefing = ""
+    if alerts:
+        briefing += ("\n\n" if briefing else "") + f"⚠️ [{TODAY}] 신용등급 누락 감지/수집 검증 경고\n"
+        briefing += "\n".join("- " + message for message in alerts)
+        briefing += "\n수집 결과가 불완전할 수 있습니다. 실행 기록을 확인하세요."
+        if os.environ.get("GITHUB_RUN_ID"):
+            briefing += f"\nhttps://github.com/{os.environ.get('GITHUB_REPOSITORY', '')}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+    elif not issues and health.get("active_issues"):
+        briefing += "\n\n✅ 이전 수집 검증 경고가 해소됐습니다."
 
     print("\n[4/6] 브리핑 전송...")
-    send_tg(briefing)
+    if briefing:
+        send_tg(briefing)
+    else:
+        print("  동일 미해결 경고는 이미 알림 — 중복 발송 생략")
 
     print("\n[5/6] 리포트 첨부...")
     send_reports(session, fresh)
@@ -1183,13 +1253,48 @@ def main() -> int:
             rec["pdf"] = link
     backfill_pdf_links(session, hist)
     save_history(hist)
-    write_html(hist, errors)
+    report_path = write_html(hist, issues)
+    if not report_path:
+        raise IntegrityError("웹 리포트가 생성되지 않았습니다")
+    verify_persisted(data, HISTORY_PATH, STATE_PATH, report_path,
+                     item_key, notification_key, RECORD_FIELDS)
+    write_json(HEALTH_PATH, update_health(health, issues, TODAY, dict(SOURCE_STATS)))
+    github_output("report_ready", "true")
+    print(f"  수집/발송/웹 교차 검증 완료: {len(data)}건, {len(issues)}개 경고")
 
-    if errors:
+    if issues:
+        mark_failure_handled()
         print(f"\n⚠️ 완료 (일부 수집 실패: {', '.join(errors)})")
         return 1
     print("\n✅ 완료")
     return 0
+
+
+def mark_failure_handled():
+    github_output("failure_handled", "true")
+
+
+def github_output(name, value):
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+            stream.write(f"{name}={value}\n")
+
+
+def main() -> int:
+    try:
+        return run_monitor()
+    except Exception as exc:
+        message = f"실행/저장 검증 실패: {type(exc).__name__}: {exc}"
+        try:
+            health = read_json(HEALTH_PATH, {})
+        except Exception:
+            health = {}
+        if pending_alerts(health, [message]):
+            send_tg(f"⚠️ [{TODAY}] 신용등급 모니터링 누락 방지 경고\n{message}\n정상적인 변동 없음으로 판단하지 마세요.")
+        write_json(HEALTH_PATH, update_health(health, [message], TODAY, dict(SOURCE_STATS)))
+        mark_failure_handled()
+        print(message)
+        return 1
 
 
 if __name__ == "__main__":

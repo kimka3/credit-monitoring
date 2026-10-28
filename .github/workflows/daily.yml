@@ -28,6 +28,9 @@ jobs:
       - name: 의존성 설치
         run: pip install -r requirements.txt
 
+      - name: 누락 방지 회귀 테스트
+        run: python -m unittest discover -s tests -q
+
       - name: 모니터 실행
         id: run
         env:
@@ -51,6 +54,7 @@ jobs:
           # state/ 가 들어가면 git add 가 오류로 끝나 스텝이 통째로 실패한다.
           # history.json 은 웹 리포트의 원본이라 같이 남겨야 화면이 쌓인다.
           git add -f state/sent.json state/history.json
+          if [ -f state/health.json ]; then git add -f state/health.json; fi
           if git diff --staged --quiet; then
             echo "변경 없음."; exit 0
           fi
@@ -61,6 +65,7 @@ jobs:
       # 휴대폰에서 보는 화면. 텔레그램은 '새 소식'을 알리고, 이 페이지는
       # '지금까지 무슨 일이 있었나'를 본다.
       - name: 페이지용 폴더 구성
+        if: always() && steps.run.outputs.report_ready == 'true'
         run: |
           test -s report.html || { echo "report.html 이 비어 있음"; exit 1; }
           mkdir -p public
@@ -69,6 +74,7 @@ jobs:
           ls -l public/
 
       - name: GitHub Pages 로 배포
+        if: always() && steps.run.outputs.report_ready == 'true'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -78,7 +84,7 @@ jobs:
       # 스크립트가 통째로 죽으면 텔레그램이 안 간다. 침묵은 '변동 없음'과
       # 구분되지 않으므로 실패 자체를 알린다.
       - name: 실패 알림
-        if: failure()
+        if: failure() && steps.run.outputs.failure_handled != 'true'
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}

@@ -31,6 +31,8 @@ BOND = """<table><tr><th></th><th>회사명</th><th>채권종류</th>
 
 
 def fetch(html):
+    count = html.count('<td>2026.10.23</td>')
+    html = f'<h2>Fixture <span>(<em>{count}</em>)</span></h2>' + html
     class Response:
         text = html
 
@@ -40,6 +42,7 @@ def fetch(html):
     class Session:
         def get(self, *args, **kwargs):
             return Response()
+        post = get
 
     return monitor.fetch_kis(Session())
 
@@ -101,6 +104,7 @@ class KisParserTests(unittest.TestCase):
             original_write = monitor.write_html
             with patch.object(monitor, 'STATE_PATH', root / 'sent.json'), \
                  patch.object(monitor, 'HISTORY_PATH', root / 'history.json'), \
+                 patch.object(monitor, 'HEALTH_PATH', root / 'health.json'), \
                  patch.object(monitor, 'scrape_all', return_value=(changes, [], None)), \
                  patch.object(monitor, 'ANTHROPIC_API_KEY', ''), \
                  patch.object(monitor, 'send_tg') as sender, \
