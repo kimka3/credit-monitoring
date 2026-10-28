@@ -32,14 +32,18 @@ def volume_issues(health, stats, cutoff):
     for label, current in stats.items():
         previous = health.get('sources', {}).get(label, {})
         old, new = previous.get('parsed', 0), current.get('parsed', 0)
-        if old >= 20 and new < old * .2 and previous.get('latest_date', '') >= cutoff:
+        if ((old >= 20 and new < old * .2) or (old > 0 and new == 0)) and previous.get('latest_date', '') >= cutoff:
             issues.append(f'{label}: 수집량 급감/누락 의심 (직전 {old}행 → 현재 {new}행)')
     return issues
 
 
-def json_tables(data, label):
+def json_tables(data, label, required_tables=()):
     if not isinstance(data, dict):
         raise IntegrityError(f'{label}: data 블록 형식 변경')
+    missing = [name for name in required_tables
+               if not isinstance(data.get(name), dict) or 'Data' not in data[name]]
+    if missing:
+        raise IntegrityError(f'{label}: 상품별 Data 블록 누락: {", ".join(sorted(missing))}')
     tables = [v['Data'] for v in data.values() if isinstance(v, dict) and 'Data' in v]
     if not tables or any(not isinstance(t, list) for t in tables):
         raise IntegrityError(f'{label}: Data 배열 누락/형식 변경')

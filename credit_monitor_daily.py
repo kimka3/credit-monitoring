@@ -51,13 +51,12 @@ KST = ZoneInfo("Asia/Seoul")
 NOW = datetime.now(KST)
 TODAY = NOW.strftime("%Y-%m-%d")
 WEEK_AGO = (NOW - timedelta(days=30)).strftime("%Y-%m-%d")
-# NICE 는 간헐적으로 실패해서 14일을 훑는다. 중복은 state 로 걸러지므로
-# 하루 실패해도 다음 날 자동으로 복구된다.
+# 최근 30일을 재조회해 지연 공시와 일시적인 수집 누락을 복구한다.
 NICE_FROM = WEEK_AGO
 WATCH_FROM = (NOW - timedelta(days=30)).strftime("%Y.%m.%d")
 
 STATE_PATH = Path("state/sent.json")
-STATE_KEEP_DAYS = 45          # 조회 구간(14일)보다 넉넉히
+STATE_KEEP_DAYS = 45          # 조회 구간(30일)보다 넉넉히
 HISTORY_PATH = Path("state/history.json")
 HEALTH_PATH = Path("state/health.json")
 SOURCE_STATS = {}
@@ -78,6 +77,8 @@ RATING_GRADES = {
     "CCC+", "CCC", "CCC-", "CC", "C", "D",
     "A1", "A2+", "A2", "A2-", "A3+", "A3", "A3-",
 }
+# WR은 상환 등에 따른 등급 취소다. 등급 상하향과 구분해 원본 건수에만 집계한다.
+NON_RATING_STATUSES = {"취소", "WR", "NR", "N/R", "-", "—"}
 
 
 KIS_LIST_URL = "https://www.kisrating.com/ratings/hot_disclosure.do"
@@ -171,7 +172,7 @@ def checked_changes(rows, label):
 
 
 def valid_previous(value, label):
-    if value in ("", "-", "—", "취소", "NR", "N/R"):
+    if not value or value in NON_RATING_STATUSES:
         return ""
     if not is_valid_rating(value):
         raise StructureError(f"{label}: 알 수 없는 직전등급 {value!r}")
@@ -383,7 +384,9 @@ def fetch_kr(session):
     if not isinstance(blocks, dict) or not blocks:
         raise StructureError("응답에 data 블록이 없습니다 (API 변경 또는 차단)")
 
-    all_items = json_tables(blocks, "한국기업평가")
+    all_items = json_tables(blocks, "한국기업평가", (
+        "data31", "data32", "data33", "data34", "data35", "data36",
+        "data38", "data39", "data3A", "data3B", "data3C"))
 
     results, n_cancel = [], 0
     for item in all_items:
@@ -459,7 +462,7 @@ def fetch_kis(session):
     if not p.rows:
         raise StructureError("표 행을 하나도 찾지 못했습니다 (페이지 구조 변경 또는 차단)")
 
-    results, colmap, last_entry, raw_count = [], None, None, 0
+    results, colmap, last_entry, raw_count, n_cancel = [], None, None, 0, 0
     for row, links in zip(p.rows, p.row_links):
         cells = [c.strip() for c in row]
         if any(is_date(c) for c in cells):
@@ -511,7 +514,11 @@ def fetch_kis(session):
         if company and any(is_date(c) for c in cells) and not is_date(date):
             raise StructureError(f"평가일 열이 맞지 않습니다 ({company}, 표 구조 변경)")
 
-        if dated and new_r not in ("취소", "NR", "N/R", "-") and (not company or not is_valid_rating(new_r)):
+        if dated and new_r in NON_RATING_STATUSES:
+            n_cancel += 1
+            last_entry = None
+            continue
+        if dated and (not company or not is_valid_rating(new_r)):
             raise StructureError(f"한국신용평가: 회사/등급 필드 변경 ({company}: {new_r!r})")
         if not company or not is_valid_rating(new_r) or not is_date(date):
             last_entry = None
@@ -543,19 +550,19 @@ def fetch_kis(session):
 
     if colmap is None:
         raise StructureError("'회사명' 헤더를 찾지 못했습니다 (표 구조 변경)")
-    if not results and not re.search(r"(조회|검색|해당|평가).{0,25}(없습니다|없음)", r.text):
+    if not raw_count and not re.search(r"(조회|검색|해당|평가).{0,25}(없습니다|없음)", r.text):
         raise StructureError("한국신용평가: 0건을 확인할 명시적 원본 표시가 없습니다")
 
     validate_kis_count(r.text, raw_count)
     changed = checked_changes(results, "한국신용평가")
-    SOURCE_STATS["한국신용평가"]["raw"] = raw_count
+    SOURCE_STATS["한국신용평가"].update(raw=raw_count, excluded_cancel=n_cancel)
     n_pdf = sum(len(c.get("pdfs") or []) for c in changed)
-    print(f"  [한국신용평가] 원본 {len(results)}건 -> 변동 {len(changed)}건, 리포트 {n_pdf}개 매칭")
+    print(f"  [한국신용평가] 원본 {raw_count}건 -> 취소/미평가 제외 {n_cancel}건 -> 변동 {len(changed)}건, 리포트 {n_pdf}개 매칭")
     return changed
 
 
 # --------------------------------------------------------------------------
-#  NICE신용평가 (HTML) — 14일 조회
+#  NICE신용평가 (HTML) — 30일 조회
 #  파라미터 없이 호출하면 항상 빈 결과. ratingGubn: R=등급, O=전망, RO=둘다
 # --------------------------------------------------------------------------
 def fetch_nice(session, search_type="0"):
@@ -611,7 +618,7 @@ def fetch_nice(session, search_type="0"):
         else:
             raise StructureError(f"NICE: 일부 데이터 행 열 수 변경 ({n}열)")
 
-        if e["new_rating"] in ("취소", "NR", "N/R", "-"):
+        if e["new_rating"] in NON_RATING_STATUSES:
             n_cancel += 1
             continue
         if not e["company"] or not is_valid_rating(e["new_rating"]):
@@ -690,10 +697,12 @@ def fetch_nice_watch(session):
     results = []
     dated_rows = 0
     for cells, links in zip(p.rows, p.row_links):
-        if not any(is_date(c) for c in cells):
+        if "등급감시부호" in cells and "등록일" in cells:
+            continue
+        if len(cells) == 1 and "등록된 정보가 없습니다." in cells[0]:
             continue
         dated_rows += 1
-        if len(cells) != 6 or not is_date(cells[4]) or not is_valid_rating(cells[2]):
+        if len(cells) != 6 or not cells[0] or not is_date(cells[4]) or not is_valid_rating(cells[2]):
             raise StructureError("NICE Watch 데이터 행 구조가 맞지 않습니다")
         if cells[3] not in WATCH_MARKS or not cells[3]:
             raise StructureError("알 수 없는 NICE Watch 부호: " + cells[3])
@@ -726,7 +735,7 @@ def fetch_kr_watch(session):
     blocks = r.json().get("data")
     if not isinstance(blocks, dict):
         raise StructureError("한국기업평가 Watch data 블록이 없습니다")
-    items = json_tables(blocks, "한국기업평가 Watch")
+    items = json_tables(blocks, "한국기업평가 Watch", ("data1", "data2"))
     hist = load_history()
     results = []
     for row in items:

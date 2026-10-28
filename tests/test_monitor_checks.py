@@ -52,6 +52,17 @@ class SourceIntegrityTests(unittest.TestCase):
         with self.assertRaises(checks.IntegrityError):
             fetch(ISSUER.replace('<td>A+</td><td>긍정적</td>','<td>NEW-GRADE</td><td>긍정적</td>'))
 
+    def test_kis_withdrawal_is_accounted_without_dropping_other_changes(self):
+        from test_kis_parser import BOND
+        withdrawn = BOND.replace('<td>BBB+</td><td>2026.10.23</td>',
+                                 '<td>WR</td><td>2026.10.23</td>')
+        rows = fetch(withdrawn + ISSUER)
+        self.assertEqual([r['company'] for r in rows], ['우리투자증권'])
+        self.assertEqual(m.SOURCE_STATS['한국신용평가']['raw'], 3)
+        self.assertEqual(m.SOURCE_STATS['한국신용평가']['excluded_cancel'], 1)
+        self.assertEqual(fetch(withdrawn), [])
+        self.assertEqual(m.valid_previous('WR', 'KIS'), '')
+
     def test_kis_original_count_mismatch(self):
         with self.assertRaises(checks.IntegrityError):
             checks.validate_kis_count('<h2>Issuer <em>2</em></h2>',1)
@@ -72,6 +83,16 @@ class SourceIntegrityTests(unittest.TestCase):
             with self.subTest(data=data), self.assertRaises(checks.IntegrityError):
                 checks.json_tables(data,'KR')
 
+    def test_one_missing_product_table_is_detected_even_with_other_rows(self):
+        data = {'data1': {'Data': [{'company': '정상회사'}]}, 'data2': {}}
+        with self.assertRaises(checks.IntegrityError):
+            checks.json_tables(data, 'KR Watch', ('data1', 'data2'))
+
+    def test_nice_watch_row_with_missing_date_is_not_silently_dropped(self):
+        from test_watch import NICE, Session
+        with self.assertRaises(checks.IntegrityError):
+            m.fetch_nice_watch(Session(NICE.replace('2026.10.01', '')))
+
     def test_volume_warning_keeps_baseline_until_recovery(self):
         old={'sources':{'KR':{'parsed':100,'latest_date':'2026.10.27'}}}
         small={'KR':{'parsed':2,'latest_date':'2026.10.27'}}
@@ -81,6 +102,11 @@ class SourceIntegrityTests(unittest.TestCase):
         self.assertEqual(old['sources']['KR']['parsed'],100)
         self.assertEqual(checks.pending_alerts(old,issues),[])
         self.assertEqual(len(checks.volume_issues(old,small,'2026.09.28')),1)
+
+    def test_small_watch_list_unexpectedly_zero_is_suspicious(self):
+        health={'sources':{'NICE Watch':{'parsed':5,'latest_date':'2026.10.13'}}}
+        self.assertEqual(len(checks.volume_issues(health,{'NICE Watch':{'parsed':0}},'2026.09.28')),1)
+        self.assertEqual(checks.volume_issues(health,{'NICE Watch':{'parsed':0}},'2026.10.14'),[])
 
 
 class RuntimeIntegrityTests(unittest.TestCase):
