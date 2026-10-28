@@ -1,0 +1,91 @@
+{
+ "active_issues": {
+  "075597b0fdde5bb11211": "fetch_kis: StructureError: 한국신용평가: 회사/등급 필드 변경 (카드오토제육차유동화전문: 'WR')",
+  "51f656a0d92348b667dd": "한국신용평가: 수집 검증 결과 미완료"
+ },
+ "last_checked": "2026-10-28",
+ "latest_sources": {
+  "NICE SF": {
+   "changes": 0,
+   "excluded_cancel": 0,
+   "latest_date": "",
+   "parsed": 0,
+   "raw": 0
+  },
+  "NICE Watch": {
+   "changes": 5,
+   "latest_date": "2026.10.13",
+   "parsed": 5,
+   "raw": 14
+  },
+  "NICE 유동화익스포져": {
+   "changes": 0,
+   "excluded_cancel": 0,
+   "latest_date": "",
+   "parsed": 0,
+   "raw": 0
+  },
+  "NICE신용평가": {
+   "changes": 0,
+   "excluded_cancel": 0,
+   "latest_date": "",
+   "parsed": 0,
+   "raw": 0
+  },
+  "한국기업평가": {
+   "changes": 8,
+   "excluded_cancel": 77,
+   "latest_date": "2026.10.28",
+   "parsed": 598,
+   "raw": 675
+  },
+  "한국기업평가 Watch": {
+   "changes": 5,
+   "latest_date": "2026.10.13",
+   "parsed": 7,
+   "raw": 19
+  }
+ },
+ "sources": {
+  "NICE SF": {
+   "changes": 0,
+   "excluded_cancel": 0,
+   "latest_date": "",
+   "parsed": 0,
+   "raw": 0
+  },
+  "NICE Watch": {
+   "changes": 5,
+   "latest_date": "2026.10.13",
+   "parsed": 5,
+   "raw": 14
+  },
+  "NICE 유동화익스포져": {
+   "changes": 0,
+   "excluded_cancel": 0,
+   "latest_date": "",
+   "parsed": 0,
+   "raw": 0
+  },
+  "NICE신용평가": {
+   "changes": 0,
+   "excluded_cancel": 0,
+   "latest_date": "",
+   "parsed": 0,
+   "raw": 0
+  },
+  "한국기업평가": {
+   "changes": 8,
+   "excluded_cancel": 77,
+   "latest_date": "2026.10.28",
+   "parsed": 598,
+   "raw": 675
+  },
+  "한국기업평가 Watch": {
+   "changes": 5,
+   "latest_date": "2026.10.13",
+   "parsed": 7,
+   "raw": 19
+  }
+ }
+}

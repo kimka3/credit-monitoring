@@ -195,6 +195,7 @@
   "kind": "등급상향",
   "new_outlook": "안정적",
   "new_rating": "AA-",
+  "new_watch": "",
   "pdf": {
    "method": "get",
    "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=kXMxYfxn2IOx98E1YsvP2H45rWEandrRODqjtuz2TGU=&encSvcSeqNo=GNJiScSo5HXGg7CbSDGkig==&evalNo=4&rptNo=03&fileName=&compCd=307207&compNm="
@@ -211,6 +212,7 @@
   "kind": "등급상향",
   "new_outlook": "",
   "new_rating": "A1",
+  "new_watch": "",
   "pdf": {
    "method": "get",
    "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=kXMxYfxn2IOx98E1YsvP2H45rWEandrRODqjtuz2TGU=&encSvcSeqNo=LZxJpu.h2gnxAt1X3Kvdjg==&evalNo=2&rptNo=03&fileName=&compCd=307207&compNm="
@@ -348,6 +350,7 @@
   "kind": "등급하향",
   "new_outlook": "",
   "new_rating": "D",
+  "new_watch": "",
   "pdf": {
    "method": "get",
    "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=Qz2vg1@Ojw2yFXa88RoghyAGMOF5XBkmDSAyemRbDRc=&encSvcSeqNo=PYNysiPGuYLml3XySaOb3Q==&evalNo=3&rptNo=03&fileName=&compCd=227286&compNm="
