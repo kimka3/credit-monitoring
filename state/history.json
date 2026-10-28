@@ -362,6 +362,30 @@
   "prev_rating": "BBB",
   "source": "한국신용평가"
  },
+ "한국신용평가|우리투자증권|2026.10.23|A+|A+|안정적|긍정적": {
+  "company": "우리투자증권",
+  "date": "2026.10.23",
+  "eval_type": "수시",
+  "first_seen": "2026-10-28",
+  "kind": "전망변경",
+  "new_outlook": "긍정적",
+  "new_rating": "A+",
+  "pdf": {
+   "fields": {
+    "fileName": "rs20261026-13.pdf",
+    "fileTitle": "우리투자증권",
+    "freeYn": "",
+    "gubun": "2",
+    "menuCd": "R8",
+    "writedate": "20261023"
+   },
+   "method": "post",
+   "url": "https://www.kisrating.com/fileDown.do"
+  },
+  "prev_outlook": "안정적",
+  "prev_rating": "A+",
+  "source": "한국신용평가"
+ },
  "한국신용평가|카이로스제팔차|2026.10.23|A2 (sf)|A2- (sf)||": {
   "company": "카이로스제팔차",
   "date": "2026.10.23",
