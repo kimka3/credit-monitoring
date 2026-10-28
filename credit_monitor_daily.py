@@ -52,6 +52,7 @@ WEEK_AGO = (NOW - timedelta(days=7)).strftime("%Y-%m-%d")
 # NICE 는 간헐적으로 실패해서 14일을 훑는다. 중복은 state 로 걸러지므로
 # 하루 실패해도 다음 날 자동으로 복구된다.
 NICE_FROM = (NOW - timedelta(days=14)).strftime("%Y-%m-%d")
+WATCH_FROM = (NOW - timedelta(days=30)).strftime("%Y.%m.%d")
 
 STATE_PATH = Path("state/sent.json")
 STATE_KEEP_DAYS = 45          # 조회 구간(14일)보다 넉넉히
@@ -91,6 +92,12 @@ KR_DOWN_URL = "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do"
 NICE_LIST_URL = "https://www.nicerating.com/disclosure/ratingChangeList.do"
 NICE_COMP_URL = "https://www.nicerating.com/disclosure/companyGradeInfo.do"
 NICE_DOWN_URL = "https://www.nicerating.com/common/fileDown.do"
+NICE_WATCH_URL = "https://www.nicerating.com/disclosure/totalWatchList.do"
+KR_WATCH_URL = "https://www.korearatings.com/ajaxf/frDisclosureSvc/getWatchList.do"
+RECORD_FIELDS = ("source", "company", "date", "prev_rating", "new_rating",
+                 "prev_outlook", "new_outlook", "kind", "eval_type",
+                 "prev_watch", "new_watch", "watch_reason", "instrument",
+                 "event_type", "source_url")
 
 # 목록 행의 회사명 링크: goView('CORP', '5207805') — 상세 페이지 키를 여기서만 얻는다.
 NICE_CMP_RE = re.compile(r"goView\(\s*'\w+'\s*,\s*'(\d+)'\s*\)\"\s*>([^<]+)</a>")
@@ -159,7 +166,9 @@ def filter_changes(results):
         if key in seen:
             continue
         seen.add(key)
-        if (d.get("change_code") and d["change_code"] not in ("", "0")) or \
+        if d.get("event_type") == "watch_registration" or \
+           ("prev_watch" in d and d.get("prev_watch", "") != d.get("new_watch", "")) or \
+           (d.get("change_code") and str(d["change_code"]) not in ("", "0")) or \
            (d["prev_rating"] and d["new_rating"] and d["prev_rating"] != d["new_rating"]) or \
            (d["prev_outlook"] and d["new_outlook"] and d["prev_outlook"] != d["new_outlook"]):
             d["kind"] = change_kind(d)
@@ -203,6 +212,8 @@ def change_kind(d) -> str:
     무엇이 바뀐 건지 알 수 없다.
     """
     prev, new = d.get("prev_rating", ""), d.get("new_rating", "")
+    if d.get("event_type") == "watch_registration":
+        return "검토변경"
     if not prev:
         return "신규평정"
     if clean_rating(prev) != clean_rating(new):
@@ -210,6 +221,8 @@ def change_kind(d) -> str:
         if a and b and a[0] == b[0]:
             return "등급상향" if b[1] < a[1] else "등급하향"
         return "등급변경"
+    if d.get("prev_watch", "") != d.get("new_watch", ""):
+        return "검토변경"
     if d.get("prev_outlook") and d.get("new_outlook") and d["prev_outlook"] != d["new_outlook"]:
         return "전망변경"
     if prev != new:
@@ -223,6 +236,14 @@ def describe_change(d) -> str:
     kind = d.get("kind") or change_kind(d)
     prev, new = d.get("prev_rating", ""), d.get("new_rating", "")
     po, no = d.get("prev_outlook", ""), d.get("new_outlook", "")
+    if d.get("new_watch"):
+        grade = new if not prev or clean_rating(prev) == clean_rating(new) else f"{prev} -> {new}"
+        text = f"{grade} · {d['new_watch']} 등록"
+        if d.get("instrument"):
+            text += f" ({d['instrument']})"
+        if d.get("watch_reason"):
+            text += f" · {d['watch_reason']}"
+        return text
 
     if kind == "전망변경":
         return f"{new} · 전망 {po} -> {no}"
@@ -236,11 +257,29 @@ def describe_change(d) -> str:
 
 def item_key(d) -> str:
     """전송 이력 키. 날짜와 출처를 포함해야 서로 다른 건이 뭉개지지 않는다."""
-    return "|".join([
+    key = "|".join([
         d.get("source", ""), d.get("company", ""), d.get("date", ""),
         d.get("prev_rating", ""), d.get("new_rating", ""),
         d.get("prev_outlook", ""), d.get("new_outlook", ""),
     ])
+    if d.get("event_type") == "watch_registration":
+        key += "|watch|" + d.get("instrument", "")
+    return key
+
+
+def notification_key(d):
+    # 기존 한기평 이력을 덮어 보완하되, 누락됐던 검토 상태는 한 번 알린다.
+    key = item_key(d)
+    if d.get("new_watch"):
+        key += "|watch:" + d["new_watch"]
+    return key
+
+
+def watch_name(value):
+    value = (value or "").strip()
+    return {"00": "", "0": "", "01": "상향검토", "02": "하향검토", "03": "미확정검토",
+            "↑": "상향검토", "↓": "하향검토", "↕": "미확정검토",
+            "긍정적 검토": "상향검토", "부정적 검토": "하향검토"}.get(value, value or "")
 
 
 # --------------------------------------------------------------------------
@@ -360,6 +399,7 @@ def fetch_kr(session):
             "date": item.get("EVAL_DT") or item.get("DSCLS_DTTM") or "",
             "eval_type": (item.get("EVAL_DIV_NM") or "").strip(),
             "change_code": item.get("GR_CHN_DVCD", "0"),
+            "new_watch": watch_name(item.get("CRAL_NM") or item.get("CUR_CRAL_CD") or ""),
             # 평가의견(신용평가요지) 다운로드에 필요한 값들
             "opn_file": (item.get("RTNG_OPN_FILE_NM") or "").strip(),
             "svc_id": (item.get("SVC_ID") or "").strip(),
@@ -594,6 +634,96 @@ def attach_nice_pdfs(session, changes) -> None:
 
 
 # --------------------------------------------------------------------------
+#  Watch 목록 — 등급/전망 목록에 나오지 않는 검토 등록을 별도로 수집한다.
+# --------------------------------------------------------------------------
+def fetch_nice_watch(session):
+    r = session.get(NICE_WATCH_URL, timeout=TIMEOUT)
+    r.raise_for_status()
+    r.encoding = "utf-8"
+    p = TableParser()
+    p.feed(r.text)
+    if not any("등급감시부호" in row and "등록일" in row for row in p.rows):
+        raise StructureError("NICE Watch 헤더를 찾지 못했습니다")
+    results = []
+    for cells, links in zip(p.rows, p.row_links):
+        if not any(is_date(c) for c in cells):
+            continue
+        if len(cells) != 6 or not is_date(cells[4]) or not is_valid_rating(cells[2]):
+            raise StructureError("NICE Watch 데이터 행 구조가 맞지 않습니다")
+        if cells[3] not in WATCH_MARKS or not cells[3]:
+            raise StructureError("알 수 없는 NICE Watch 부호: " + cells[3])
+        if not WATCH_FROM <= cells[4] <= TODAY.replace("-", "."):
+            continue
+        cmp_cd = ""
+        for link in links:
+            hit = re.search(r"goView\(\s*'\w+'\s*,\s*'(\d+)'", link)
+            if hit:
+                cmp_cd = hit[1]
+                break
+        results.append(dict(source="NICE신용평가", company=cells[0],
+            date=cells[4], prev_rating="", new_rating=cells[2],
+            prev_outlook="", new_outlook="", new_watch=watch_name(cells[3]),
+            watch_reason=cells[5], instrument=cells[1], cmp_cd=cmp_cd,
+            event_type="watch_registration", eval_type="Watch 등록",
+            source_url=NICE_WATCH_URL, pdfs=[]))
+    # Watch 등록일은 이번 평가일과 다를 수 있어 의견서를 임의 매칭하지 않는다.
+    changed = filter_changes(results)
+    print(f"  [NICE Watch] 최근 30일 등록 {len(changed)}건")
+    return changed
+
+
+def fetch_kr_watch(session):
+    r = session.get(KR_WATCH_URL, params={"MENU_ID": "420", "CONTENTS_NO": "1", "SITE_NO": "2"}, timeout=TIMEOUT)
+    r.raise_for_status()
+    blocks = r.json().get("data")
+    if not isinstance(blocks, dict):
+        raise StructureError("한국기업평가 Watch data 블록이 없습니다")
+    tables = [v["Data"] for v in blocks.values() if isinstance(v, dict) and "Data" in v]
+    if not tables:
+        raise StructureError("한국기업평가 Watch Data 목록이 없습니다")
+    hist = load_history()
+    results = []
+    for row in (r for table in tables for r in table):
+        date = row.get("RGDT") or ""
+        if not is_date(date):
+            raise StructureError("한국기업평가 Watch 등록일이 없습니다")
+        if not WATCH_FROM <= date <= TODAY.replace("-", "."):
+            continue
+        company = (row.get("COMP_NM") or "").strip()
+        rating = (row.get("GRD_NM") or "").strip()
+        status = watch_name(row.get("CRAL_NM") or row.get("CRAL_CD") or "")
+        if not company or not is_valid_rating(rating) or not status:
+            raise StructureError("한국기업평가 Watch 필수 필드가 없습니다")
+        previous = [h for h in hist.values() if h.get("source") == "한국기업평가"
+                    and h.get("company") == company and h.get("date") == date
+                    and (not h.get("instrument") or h["instrument"] == row.get("BOND_KIND_KRNM"))
+                    and clean_rating(h.get("new_rating", "")) == clean_rating(rating)]
+        # 종전 등급/전망을 알고 있는 기존 이력은 같은 키로 보완한다.
+        entry = dict(previous[0]) if previous else dict(source="한국기업평가",
+            company=company, date=date, prev_rating="", new_rating=rating,
+            prev_outlook="", new_outlook="", event_type="watch_registration")
+        entry.update(new_watch=status, watch_reason=row.get("RSN") or "",
+                     eval_type=entry.get("eval_type") or "Watch 등록",
+                     source_url="https://www.korearatings.com/cms/frCmnCon/index.do?MENU_ID=420",
+                     opn_file=row.get("RTNG_OPN_FILE_NM") or "",
+                     svc_id=row.get("SVC_ID") or "", eval_seq=row.get("EVAL_SEQNO"),
+                     comp_cd=row.get("COMP_CD") or "", pdfs=[])
+        # 기존에 알려진 상품 구분이 없는 종전 이력은 키를 바꾸지 않는다.
+        if not previous:
+            entry["instrument"] = row.get("BOND_KIND_KRNM") or ""
+        entry["kind"] = change_kind(entry) if not previous else "검토변경"
+        results.append(entry)
+    # 같은 등급의 CP/STB나 여러 회차는 종전 이력의 단위로 중복 제거한다.
+    by_key = {item_key(x): x for x in results}
+    changed = list(by_key.values())
+    for x in changed:
+        x["kind"] = "검토변경"
+    attach_kr_pdfs(changed)
+    print(f"  [한국기업평가 Watch] 최근 30일 등록/보완 {len(changed)}건")
+    return changed
+
+
+# --------------------------------------------------------------------------
 #  수집 — 3회 재시도
 # --------------------------------------------------------------------------
 def scrape_all():
@@ -601,7 +731,7 @@ def scrape_all():
     session.headers.update(HEADERS)
     all_data, errors = [], []
 
-    for fetcher in (fetch_kr, fetch_kis, fetch_nice):
+    for fetcher in (fetch_kr, fetch_kis, fetch_nice, fetch_kr_watch, fetch_nice_watch):
         last_err = None
         for attempt in range(RETRIES):
             try:
@@ -620,7 +750,16 @@ def scrape_all():
 
     print(f"\n  === 3사 합계: 변동 {len(all_data)}건, 실패 {len(errors)}곳 ===")
     # 리포트를 같은 세션으로 받아야 쿠키가 유지된다.
-    return all_data, errors, session
+    # 공시와 Watch 목록에 함께 있는 건은 검토 정보가 있는 결과를 합친다.
+    combined = {}
+    for item in all_data:
+        key = item_key(item)
+        existing = combined.get(key)
+        if existing:
+            existing.update({k: v for k, v in item.items() if v not in ("", None, [])})
+        else:
+            combined[key] = item
+    return list(combined.values()), errors, session
 
 
 # --------------------------------------------------------------------------
@@ -636,6 +775,8 @@ SYSTEM = """당신은 한국 채권시장 전문 애널리스트입니다.
 
 
 def analyze(changes):
+    if any(c.get("new_watch") for c in changes):
+        return format_plain(changes)
     if not ANTHROPIC_API_KEY:
         print("  ANTHROPIC_API_KEY 없음 — 원문 형식으로 보냅니다.")
         return format_plain(changes)
@@ -651,7 +792,7 @@ def analyze(changes):
                        f"오늘: {TODAY}\n\n신규 등급변동 데이터:\n"
                        f"{json.dumps(changes, ensure_ascii=False, indent=2)}\n\n"
                        "각 건의 kind 필드가 변동 유형이다(등급상향/등급하향/"
-                       "전망변경/신규평정). 이 분류를 그대로 따르고 임의로 바꾸지 말 것.\n\n"
+                       "전망변경/검토변경/신규평정). 이 분류를 그대로 따르고 임의로 바꾸지 말 것.\n\n"
                        "형식:\n📊 [날짜] 신용등급 변동 브리핑\n"
                        "■ 부도/등급 하향 (⚠️)\n  - 업체명 | 변경전→변경후 | 출처\n"
                        "■ 등급 상향\n  - 업체명 | 변경전→변경후 | 출처\n"
@@ -668,7 +809,7 @@ def analyze(changes):
         return format_plain(changes)
 
 
-ORDER = {"등급하향": 0, "등급변경": 1, "등급상향": 2, "전망변경": 3, "신규평정": 4, "변경": 5}
+ORDER = {"등급하향": 0, "등급변경": 1, "등급상향": 2, "전망변경": 3, "검토변경": 3, "신규평정": 4, "변경": 5}
 
 
 def format_plain(changes):
@@ -678,7 +819,8 @@ def format_plain(changes):
         kind = c.get("kind") or change_kind(c)
         mark = "⚠️ " if c.get("new_rating") == "D" or kind == "등급하향" else ""
         lines.append(f"- {mark}[{kind}] {c['company']} | {describe_change(c)} | "
-                     f"{c['source']} [{c.get('date', '')}]")
+                     f"{c['source']} [{c.get('date', '')}]"
+                     + (f" · {c['notification_note']}" if c.get("notification_note") else ""))
     return "\n".join(lines)
 
 
@@ -847,7 +989,8 @@ def backfill_pdf_links(session, hist: dict) -> None:
     한 건당 한 번만 시도한다(pdf_checked). 의견서가 아예 없는 건도 있어서,
     표시해 두지 않으면 매일 같은 조회를 반복하게 된다.
     """
-    todo = [r for r in hist.values() if not r.get("pdf") and not r.get("pdf_checked")]
+    todo = [r for r in hist.values() if not r.get("pdf") and not r.get("pdf_checked")
+            and r.get("event_type") != "watch_registration"]
     if not todo:
         return
     oldest = min((r.get("date") or "9999.99.99") for r in todo)
@@ -964,8 +1107,7 @@ def write_html(hist: dict, errors, path="report.html") -> None:
         print("  report_template.html 이 없어 HTML 생성을 건너뜁니다.")
         return
 
-    keys = ("source", "company", "date", "prev_rating", "new_rating",
-            "prev_outlook", "new_outlook", "kind", "eval_type")
+    keys = RECORD_FIELDS
     records = []
     for r in hist.values():
         rec = {k: (r.get(k) or "") for k in keys}
@@ -996,14 +1138,17 @@ def main() -> int:
 
     print("\n[2/6] 기존 발송분 제외...")
     state = load_state()
-    fresh = [d for d in data if item_key(d) not in state]
+    fresh = [d for d in data if notification_key(d) not in state]
+    for d in fresh:
+        if d.get("new_watch") and item_key(d) in state:
+            d["notification_note"] = "기존 공시의 검토 상태 보완"
     print(f"  변동 {len(data)}건 중 신규 {len(fresh)}건 (기발송 {len(data) - len(fresh)}건 제외)")
 
     print("\n[3/6] 브리핑 작성...")
     if errors and not data:
         # 전부 실패했는데 "변동 없음"이라고 하면 좋은 소식으로 오해한다.
         briefing = (f"⚠️ [{TODAY}] 신용등급 수집 실패\n\n"
-                    f"3사 모두 데이터를 가져오지 못했습니다.\n"
+                    f"일부 평가사 또는 수집 항목을 확인하지 못했습니다.\n"
                     f"실패: {', '.join(errors)}\n\n"
                     f"등급 변동이 없다는 뜻이 아닙니다. 사이트 구조 변경 여부를 확인하세요.")
     elif not fresh:
@@ -1023,7 +1168,7 @@ def main() -> int:
     # 전송에 성공한 건만 이력에 남긴다. 먼저 저장하면 전송 실패 시 영영 누락된다.
     if fresh:
         for d in fresh:
-            state[item_key(d)] = TODAY
+            state[notification_key(d)] = TODAY
         save_state(state)
 
     # 웹 리포트는 발송 여부와 무관하게 수집된 전부를 쌓는다. 텔레그램은 '새 소식'을
@@ -1032,9 +1177,7 @@ def main() -> int:
     hist = load_history()
     for d in data:
         rec = hist.setdefault(item_key(d), {"first_seen": TODAY})
-        rec.update({k: d.get(k, "") for k in
-                    ("source", "company", "date", "prev_rating", "new_rating",
-                     "prev_outlook", "new_outlook", "kind", "eval_type")})
+        rec.update({k: d[k] for k in RECORD_FIELDS if k in d})
         link = pdf_link((d.get("pdfs") or [None])[0])
         if link:
             rec["pdf"] = link

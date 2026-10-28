@@ -265,7 +265,17 @@ function render(){
       // 전망만 바뀐 건은 등급을 두 번 쓰지 않는다. 'BBB+ → BBB+' 로 보여주면
       // 무엇이 달라졌는지 읽히지 않는다. 바뀐 축을 앞세운다.
       let move, extra = "";
-      if (r.kind === "전망변경"){
+      if (r.new_watch){
+        const changedGrade = r.kind === '등급상향' || r.kind === '등급하향' || r.kind === '등급변경';
+        move = (changedGrade ? '<span class="g from">' + esc(r.prev_rating) + '</span><span class="arw">→</span>' : '') +
+               '<span class="g to ' + tone + '">' + esc(r.new_rating) + '</span>' +
+               '<span class="arw">·</span><span class="g to ol">' +
+               esc(r.new_watch) + ' 등록</span>';
+        const detail = [r.instrument, r.watch_reason].filter(Boolean).join(' · ');
+        extra = (detail ? '<div class="ol">' + esc(detail) + '</div>' : '') +
+          (r.source_url ? '<div class="ol"><a href="' + esc(r.source_url) +
+           '" target="_blank" rel="noopener">평가사 Watch 원문</a></div>' : '');
+      } else if (r.kind === "전망변경"){
         move = '<span class="g to nu">' + esc(r.new_rating) + "</span>" +
                '<span class="arw">유지 · 전망</span>' +
                '<span class="g from">' + esc(r.prev_outlook || "–") + "</span>" +
