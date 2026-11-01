@@ -392,6 +392,30 @@
   "prev_rating": "B+",
   "source": "한국기업평가"
  },
+ "한국신용평가|다올랩터제오차|2026.10.30|A2 (sf)|A2- (sf)||": {
+  "company": "다올랩터제오차",
+  "date": "2026.10.30",
+  "eval_type": "본",
+  "first_seen": "2026-11-02",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "A2- (sf)",
+  "pdf": {
+   "fields": {
+    "fileName": "rs20261030-58.pdf",
+    "fileTitle": "다올랩터제오차",
+    "freeYn": "",
+    "gubun": "2",
+    "menuCd": "R8",
+    "writedate": "20261030"
+   },
+   "method": "post",
+   "url": "https://www.kisrating.com/fileDown.do"
+  },
+  "prev_outlook": "",
+  "prev_rating": "A2 (sf)",
+  "source": "한국신용평가"
+ },
  "한국신용평가|동화기업|2026.08.31|BBB+|BBB+|안정적|부정적": {
   "company": "동화기업",
   "date": "2026.08.31",
