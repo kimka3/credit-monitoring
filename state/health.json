@@ -1,6 +1,8 @@
 {
- "active_issues": {},
- "last_checked": "2026-11-05",
+ "active_issues": {
+  "0d0890c4344c741aa0ef": "보충조회에서 미발송 공시 발견 2건 (지연 공시/누락 가능): 에이치디건설기계(주) [2026.11.04], 에이치디건설기계 [2026.11.04]"
+ },
+ "last_checked": "2026-11-06",
  "last_success": "2026-11-05",
  "latest_sources": {
   "NICE SF": {
@@ -11,10 +13,10 @@
    "raw": 0
   },
   "NICE Watch": {
-   "changes": 1,
-   "latest_date": "2026.10.13",
-   "parsed": 1,
-   "raw": 14
+   "changes": 2,
+   "latest_date": "2026.11.05",
+   "parsed": 2,
+   "raw": 15
   },
   "NICE 유동화익스포져": {
    "changes": 0,
@@ -31,11 +33,11 @@
    "raw": 0
   },
   "한국기업평가": {
-   "changes": 5,
-   "excluded_cancel": 81,
-   "latest_date": "2026.11.04",
-   "parsed": 614,
-   "raw": 695
+   "changes": 6,
+   "excluded_cancel": 82,
+   "latest_date": "2026.11.05",
+   "parsed": 610,
+   "raw": 692
   },
   "한국기업평가 Watch": {
    "changes": 3,
@@ -46,9 +48,9 @@
   "한국신용평가": {
    "changes": 7,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.04",
-   "parsed": 539,
-   "raw": 539
+   "latest_date": "2026.11.05",
+   "parsed": 550,
+   "raw": 550
   }
  },
  "sources": {
@@ -60,10 +62,10 @@
    "raw": 0
   },
   "NICE Watch": {
-   "changes": 1,
-   "latest_date": "2026.10.13",
-   "parsed": 1,
-   "raw": 14
+   "changes": 2,
+   "latest_date": "2026.11.05",
+   "parsed": 2,
+   "raw": 15
   },
   "NICE 유동화익스포져": {
    "changes": 0,
@@ -80,11 +82,11 @@
    "raw": 0
   },
   "한국기업평가": {
-   "changes": 5,
-   "excluded_cancel": 81,
-   "latest_date": "2026.11.04",
-   "parsed": 614,
-   "raw": 695
+   "changes": 6,
+   "excluded_cancel": 82,
+   "latest_date": "2026.11.05",
+   "parsed": 610,
+   "raw": 692
   },
   "한국기업평가 Watch": {
    "changes": 3,
@@ -95,9 +97,9 @@
   "한국신용평가": {
    "changes": 7,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.04",
-   "parsed": 539,
-   "raw": 539
+   "latest_date": "2026.11.05",
+   "parsed": 550,
+   "raw": 550
   }
  }
 }
