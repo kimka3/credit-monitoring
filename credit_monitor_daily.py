@@ -71,11 +71,16 @@ HEADERS = {
     "Accept": "text/html, application/json, */*",
 }
 
+# '정지'는 등급이 아니라 평정 정지 상태다. 그러나 취소·WR과 달리 정지되거나 정지에서
+# D로 바뀌는 것은 신용 사건이므로, 빈 값으로 지우지 않고 그대로 변동으로 잡는다.
+# 순위가 없어 상향·하향이 아닌 '등급변경'으로 분류된다.
+RATING_SUSPENDED = "정지"
 RATING_GRADES = {
     "AAA", "AA+", "AA", "AA-", "A+", "A", "A-",
     "BBB+", "BBB", "BBB-", "BB+", "BB", "BB-", "B+", "B", "B-",
     "CCC+", "CCC", "CCC-", "CC", "C", "D",
     "A1", "A2+", "A2", "A2-", "A3+", "A3", "A3-",
+    RATING_SUSPENDED,
 }
 # WR은 상환 등에 따른 등급 취소다. 등급 상하향과 구분해 원본 건수에만 집계한다.
 NON_RATING_STATUSES = {"취소", "WR", "NR", "N/R", "-", "—"}
@@ -879,7 +884,7 @@ def format_plain(changes):
     for c in sorted(changes, key=lambda c: (0 if c.get("new_rating") == "D" else 1,
                                             ORDER.get(c.get("kind"), 9))):
         kind = c.get("kind") or change_kind(c)
-        mark = "⚠️ " if c.get("new_rating") == "D" or kind == "등급하향" else ""
+        mark = "⚠️ " if c.get("new_rating") in ("D", RATING_SUSPENDED) or kind == "등급하향" else ""
         lines.append(f"- {mark}[{kind}] {c['company']} | {describe_change(c)} | "
                      f"{c['source']} [{c.get('date', '')}]"
                      + (f" · {c['notification_note']}" if c.get("notification_note") else ""))
