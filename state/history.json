@@ -133,6 +133,22 @@
   "prev_rating": "A",
   "source": "NICE신용평가"
  },
+ "NICE신용평가|에이치디건설기계(주)|2026.11.09|A|A+|Positive|Stable": {
+  "company": "에이치디건설기계(주)",
+  "date": "2026.11.09",
+  "eval_type": "수시",
+  "first_seen": "2026-11-10",
+  "kind": "등급상향",
+  "new_outlook": "Stable",
+  "new_rating": "A+",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.nicerating.com/common/fileDown.do?docId=d11a8dd1-84da-45f6-88ae-aa9265689268"
+  },
+  "prev_outlook": "Positive",
+  "prev_rating": "A",
+  "source": "NICE신용평가"
+ },
  "NICE신용평가|일신건영(주)|2026.09.09|BB+|BB+|Positive|Stable": {
   "company": "일신건영(주)",
   "date": "2026.09.09",

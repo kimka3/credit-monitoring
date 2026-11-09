@@ -1,7 +1,7 @@
 {
  "active_issues": {},
- "last_checked": "2026-11-09",
- "last_success": "2026-11-09",
+ "last_checked": "2026-11-10",
+ "last_success": "2026-11-10",
  "latest_sources": {
   "NICE SF": {
    "changes": 0,
@@ -24,18 +24,18 @@
    "raw": 0
   },
   "NICE신용평가": {
-   "changes": 0,
+   "changes": 1,
    "excluded_cancel": 0,
-   "latest_date": "",
-   "parsed": 0,
-   "raw": 0
+   "latest_date": "2026.11.09",
+   "parsed": 9,
+   "raw": 9
   },
   "한국기업평가": {
    "changes": 4,
-   "excluded_cancel": 70,
-   "latest_date": "2026.11.06",
-   "parsed": 574,
-   "raw": 644
+   "excluded_cancel": 75,
+   "latest_date": "2026.11.09",
+   "parsed": 592,
+   "raw": 667
   },
   "한국기업평가 Watch": {
    "changes": 3,
@@ -46,9 +46,9 @@
   "한국신용평가": {
    "changes": 7,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.06",
-   "parsed": 535,
-   "raw": 535
+   "latest_date": "2026.11.09",
+   "parsed": 549,
+   "raw": 549
   }
  },
  "sources": {
@@ -73,18 +73,18 @@
    "raw": 0
   },
   "NICE신용평가": {
-   "changes": 0,
+   "changes": 1,
    "excluded_cancel": 0,
-   "latest_date": "",
-   "parsed": 0,
-   "raw": 0
+   "latest_date": "2026.11.09",
+   "parsed": 9,
+   "raw": 9
   },
   "한국기업평가": {
    "changes": 4,
-   "excluded_cancel": 70,
-   "latest_date": "2026.11.06",
-   "parsed": 574,
-   "raw": 644
+   "excluded_cancel": 75,
+   "latest_date": "2026.11.09",
+   "parsed": 592,
+   "raw": 667
   },
   "한국기업평가 Watch": {
    "changes": 3,
@@ -95,9 +95,9 @@
   "한국신용평가": {
    "changes": 7,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.06",
-   "parsed": 535,
-   "raw": 535
+   "latest_date": "2026.11.09",
+   "parsed": 549,
+   "raw": 549
   }
  }
 }
