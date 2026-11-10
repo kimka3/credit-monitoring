@@ -611,6 +611,30 @@
   "prev_rating": "A",
   "source": "한국신용평가"
  },
+ "한국신용평가|에코파인트리제삼차|2026.11.10|A2- (sf)|A2+ (sf)||": {
+  "company": "에코파인트리제삼차",
+  "date": "2026.11.10",
+  "eval_type": "본",
+  "first_seen": "2026-11-11",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2+ (sf)",
+  "pdf": {
+   "fields": {
+    "fileName": "rs20261110-14.pdf",
+    "fileTitle": "에코파인트리제삼차",
+    "freeYn": "",
+    "gubun": "2",
+    "menuCd": "R8",
+    "writedate": "20261110"
+   },
+   "method": "post",
+   "url": "https://www.kisrating.com/fileDown.do"
+  },
+  "prev_outlook": "",
+  "prev_rating": "A2- (sf)",
+  "source": "한국신용평가"
+ },
  "한국신용평가|우리투자증권|2026.10.23|A+|A+|안정적|긍정적": {
   "company": "우리투자증권",
   "date": "2026.10.23",
