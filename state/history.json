@@ -286,6 +286,23 @@
   "prev_rating": "A",
   "source": "한국기업평가"
  },
+ "한국기업평가|기업키움이2023제1차유동화전문(유)|2026.11.11|C|D||": {
+  "company": "기업키움이2023제1차유동화전문(유)",
+  "date": "2026.11.11",
+  "eval_type": "수시",
+  "first_seen": "2026-11-12",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "D",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=4HrM91U9x9jMG98UeQEyJ2UXe@kXO@VFrvMfy29SAZY=&encSvcSeqNo=femFmm25Dh.D4E1rVWdpWw==&evalNo=5&rptNo=03&fileName=&compCd=221911&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "C",
+  "source": "한국기업평가"
+ },
  "한국기업평가|롯데손해보험(주)|2026.10.13|A-|A-|부정적|": {
   "company": "롯데손해보험(주)",
   "date": "2026.10.13",
