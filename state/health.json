@@ -1,6 +1,9 @@
 {
- "active_issues": {},
- "last_checked": "2026-11-12",
+ "active_issues": {
+  "666695bcbea46bfa0854": "fetch_nice_watch: ConnectTimeout: HTTPSConnectionPool(host='www.nicerating.com', port=443): Max retries exceeded with url: /disclosure/totalWatchList.do (Caused by ConnectTimeoutError(<HTTPSConnection(host='www.nicerating.com', port=443) at 0x718f7d76f5f0>, 'Connection to www.nicerating.com timed out. (connect timeout=30)'))",
+  "d7ce49381ee093d908ef": "NICE Watch: 수집 검증 결과 미완료"
+ },
+ "last_checked": "2026-11-13",
  "last_success": "2026-11-12",
  "latest_sources": {
   "NICE SF": {
@@ -9,12 +12,6 @@
    "latest_date": "",
    "parsed": 0,
    "raw": 0
-  },
-  "NICE Watch": {
-   "changes": 2,
-   "latest_date": "2026.11.05",
-   "parsed": 2,
-   "raw": 15
   },
   "NICE 유동화익스포져": {
    "changes": 0,
@@ -31,24 +28,24 @@
    "raw": 9
   },
   "한국기업평가": {
-   "changes": 5,
-   "excluded_cancel": 70,
-   "latest_date": "2026.11.11",
-   "parsed": 618,
-   "raw": 688
+   "changes": 2,
+   "excluded_cancel": 71,
+   "latest_date": "2026.11.12",
+   "parsed": 621,
+   "raw": 692
   },
   "한국기업평가 Watch": {
-   "changes": 3,
-   "latest_date": "2026.10.13",
-   "parsed": 4,
+   "changes": 0,
+   "latest_date": "",
+   "parsed": 0,
    "raw": 19
   },
   "한국신용평가": {
-   "changes": 8,
+   "changes": 6,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.11",
-   "parsed": 556,
-   "raw": 556
+   "latest_date": "2026.11.12",
+   "parsed": 574,
+   "raw": 574
   }
  },
  "sources": {
@@ -80,24 +77,24 @@
    "raw": 9
   },
   "한국기업평가": {
-   "changes": 5,
-   "excluded_cancel": 70,
-   "latest_date": "2026.11.11",
-   "parsed": 618,
-   "raw": 688
+   "changes": 2,
+   "excluded_cancel": 71,
+   "latest_date": "2026.11.12",
+   "parsed": 621,
+   "raw": 692
   },
   "한국기업평가 Watch": {
-   "changes": 3,
-   "latest_date": "2026.10.13",
-   "parsed": 4,
+   "changes": 0,
+   "latest_date": "",
+   "parsed": 0,
    "raw": 19
   },
   "한국신용평가": {
-   "changes": 8,
+   "changes": 6,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.11",
-   "parsed": 556,
-   "raw": 556
+   "latest_date": "2026.11.12",
+   "parsed": 574,
+   "raw": 574
   }
  }
 }
