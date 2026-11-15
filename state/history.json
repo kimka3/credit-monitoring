@@ -84,6 +84,23 @@
   "source_url": "https://www.nicerating.com/disclosure/totalWatchList.do",
   "watch_reason": "대주주/경영권 변경"
  },
+ "NICE신용평가|(주)애큐온캐피탈|2026.11.12||A|||watch|SB": {
+  "company": "(주)애큐온캐피탈",
+  "date": "2026.11.12",
+  "eval_type": "Watch 등록",
+  "event_type": "watch_registration",
+  "first_seen": "2026-11-16",
+  "instrument": "SB",
+  "kind": "검토변경",
+  "new_outlook": "",
+  "new_rating": "A",
+  "new_watch": "상향검토",
+  "prev_outlook": "",
+  "prev_rating": "",
+  "source": "NICE신용평가",
+  "source_url": "https://www.nicerating.com/disclosure/totalWatchList.do",
+  "watch_reason": "대주주/경영권 변경"
+ },
  "NICE신용평가|(주)에코프로|2026.08.25|A-|A-|Stable|Negative": {
   "company": "(주)에코프로",
   "date": "2026.08.25",
