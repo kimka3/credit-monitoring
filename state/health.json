@@ -1,41 +1,23 @@
 {
- "active_issues": {},
- "last_checked": "2026-11-18",
+ "active_issues": {
+  "20c56af836449c3c5879": "fetch_nice_watch: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/totalWatchList.do",
+  "4b4867af02967cae14f9": "fetch_nice_exposure: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-19&cmpCd=&strDate=2026-10-20&endDate=2026-11-19&ratingGubn=RO&searchType=7",
+  "7d1377822ab6e3c2ea41": "fetch_nice: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-19&cmpCd=&strDate=2026-10-20&endDate=2026-11-19&ratingGubn=RO&searchType=0",
+  "8e5af89da3e076861607": "NICE SF: 수집 검증 결과 미완료",
+  "b7229f4b9cfb72e386d2": "NICE신용평가: 수집 검증 결과 미완료",
+  "ccb3eee3c70f712a7b7c": "fetch_nice_sf: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-19&cmpCd=&strDate=2026-10-20&endDate=2026-11-19&ratingGubn=RO&searchType=6",
+  "d7ce49381ee093d908ef": "NICE Watch: 수집 검증 결과 미완료",
+  "ef9664662b7842c5eeed": "NICE 유동화익스포져: 수집 검증 결과 미완료"
+ },
+ "last_checked": "2026-11-19",
  "last_success": "2026-11-18",
  "latest_sources": {
-  "NICE SF": {
-   "changes": 0,
-   "excluded_cancel": 0,
-   "latest_date": "",
-   "parsed": 0,
-   "raw": 0
-  },
-  "NICE Watch": {
-   "changes": 2,
-   "latest_date": "2026.11.12",
-   "parsed": 2,
-   "raw": 15
-  },
-  "NICE 유동화익스포져": {
-   "changes": 0,
-   "excluded_cancel": 0,
-   "latest_date": "",
-   "parsed": 0,
-   "raw": 0
-  },
-  "NICE신용평가": {
-   "changes": 1,
-   "excluded_cancel": 0,
-   "latest_date": "2026.11.09",
-   "parsed": 9,
-   "raw": 9
-  },
   "한국기업평가": {
    "changes": 2,
-   "excluded_cancel": 74,
-   "latest_date": "2026.11.17",
-   "parsed": 609,
-   "raw": 683
+   "excluded_cancel": 73,
+   "latest_date": "2026.11.18",
+   "parsed": 658,
+   "raw": 731
   },
   "한국기업평가 Watch": {
    "changes": 0,
@@ -46,9 +28,9 @@
   "한국신용평가": {
    "changes": 6,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.17",
-   "parsed": 525,
-   "raw": 525
+   "latest_date": "2026.11.18",
+   "parsed": 539,
+   "raw": 539
   }
  },
  "sources": {
@@ -81,10 +63,10 @@
   },
   "한국기업평가": {
    "changes": 2,
-   "excluded_cancel": 74,
-   "latest_date": "2026.11.17",
-   "parsed": 609,
-   "raw": 683
+   "excluded_cancel": 73,
+   "latest_date": "2026.11.18",
+   "parsed": 658,
+   "raw": 731
   },
   "한국기업평가 Watch": {
    "changes": 0,
@@ -95,9 +77,9 @@
   "한국신용평가": {
    "changes": 6,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.17",
-   "parsed": 525,
-   "raw": 525
+   "latest_date": "2026.11.18",
+   "parsed": 539,
+   "raw": 539
   }
  }
 }
