@@ -2,6 +2,8 @@
 import json
 import re
 import sys
+import shutil
+import subprocess
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -34,3 +36,12 @@ if __name__ == '__main__':
               strDate=m.NICE_FROM, endDate=m.TODAY, ratingGubn='RO', searchType='0'))
     with m.requests.Session() as s:
         probe(s, 'default_headers_watch', m.NICE_WATCH_URL)
+    chrome = shutil.which('google-chrome') or shutil.which('chromium')
+    if chrome:
+        result = subprocess.run([chrome, '--headless', '--no-sandbox', '--disable-gpu',
+            '--dump-dom', '--timeout=30000', m.NICE_WATCH_URL],
+            capture_output=True, text=True, timeout=60)
+        title = re.search(r'<title[^>]*>(.*?)</title>', result.stdout, re.S | re.I)
+        print(json.dumps(dict(name='browser_watch', exit_code=result.returncode,
+            title=title[1].strip() if title else '', size=len(result.stdout),
+            has_watch_header='등급감시부호' in result.stdout), ensure_ascii=False), flush=True)
