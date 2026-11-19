@@ -30,6 +30,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from datetime import datetime, timedelta
@@ -1062,7 +1063,9 @@ def backfill_pdf_links(session, hist: dict) -> None:
     쓰고 발송 대상에는 넣지 않는다.
 
     한 건당 한 번만 시도한다(pdf_checked). 의견서가 아예 없는 건도 있어서,
-    표시해 두지 않으면 매일 같은 조회를 반복하게 된다.
+    표시해 두지 않으면 매일 같은 조회를 반복하게 된다. 다만 평가사 조회 자체가
+    실패한 경우(접속 차단·장애)는 의견서 유무를 모르는 것이므로 표시하지 않고
+    다음 실행에서 다시 시도한다.
     """
     todo = [r for r in hist.values() if not r.get("pdf") and not r.get("pdf_checked")
             and r.get("event_type") != "watch_registration"]
@@ -1079,6 +1082,7 @@ def backfill_pdf_links(session, hist: dict) -> None:
     by_source = {}
     for r in todo:
         by_source.setdefault(r.get("source", ""), []).append(r)
+    looked_up = set()   # 조회가 끝까지 된 평가사
 
     # --- 한국기업평가 ---
     if by_source.get("한국기업평가"):
@@ -1113,6 +1117,7 @@ def backfill_pdf_links(session, hist: dict) -> None:
                         "evalNo": str(it.get("EVAL_SEQNO")),
                         "compCd": (it.get("COMP_CD") or "").strip()})
                     found += 1
+            looked_up.add("한국기업평가")
         except Exception as exc:
             print(f"    한국기업평가 보정 실패: {type(exc).__name__}: {exc}")
 
@@ -1136,6 +1141,7 @@ def backfill_pdf_links(session, hist: dict) -> None:
                 if meta:
                     r["pdf"] = pdf_link(meta)
                     found += 1
+            looked_up.add("한국신용평가")
         except Exception as exc:
             print(f"    한국신용평가 보정 실패: {type(exc).__name__}: {exc}")
 
@@ -1167,12 +1173,19 @@ def backfill_pdf_links(session, hist: dict) -> None:
                         r["pdf"] = pdf_link({"src": "nice", "docId": hit})
                         found += 1
                         break
+            looked_up.add("NICE신용평가")
         except Exception as exc:
             print(f"    NICE 보정 실패: {type(exc).__name__}: {exc}")
 
+    lookup_sources = {"한국기업평가", "한국신용평가", "NICE신용평가"}
+    retry = 0
     for r in todo:
+        if not r.get("pdf") and r.get("source") in lookup_sources and r.get("source") not in looked_up:
+            retry += 1
+            continue
         r["pdf_checked"] = TODAY
-    print(f"  링크 {found}건 보정 완료 (나머지 {len(todo) - found}건은 의견서 없음)")
+    print(f"  링크 {found}건 보정 완료 (의견서 없음 {len(todo) - found - retry}건"
+          + (f", 조회 실패로 다음 실행에서 재시도 {retry}건" if retry else "") + ")")
 
 
 def write_html(hist: dict, errors, path="report.html") -> None:
@@ -1204,7 +1217,35 @@ def write_html(hist: dict, errors, path="report.html") -> None:
     return Path(path)
 
 
+def latest_health() -> dict:
+    """main의 최신 상태. Actions는 실행 요청 시점의 커밋을 받으므로, 먼저 끝난
+    실행(사내 PC 요청분)의 결과를 보려면 다시 읽어야 한다."""
+    try:
+        subprocess.run(["git", "fetch", "-q", "--depth=1", "origin", "main"],
+                       check=True, capture_output=True, timeout=60)
+        out = subprocess.run(["git", "show", "FETCH_HEAD:state/health.json"],
+                             check=True, capture_output=True, timeout=30)
+        return json.loads(out.stdout.decode("utf-8"))
+    except Exception as exc:
+        print(f"  최신 상태 확인 실패, 받은 사본 기준으로 판단: {type(exc).__name__}: {exc}")
+        return read_json(HEALTH_PATH, {})
+
+
+def skip_backup_run() -> bool:
+    """NICE 원본 없이 들어온 실행(Vultr 08:27 예비 호출)은, 오늘 이미 경고 없이
+    끝난 실행이 있으면 건너뛴다. NICE가 해외 IP를 막는 동안 사내 PC가 NICE
+    원본을 넣어 먼저 실행하기 때문이다. 수동 실행은 force_run으로 강제한다."""
+    if (os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("NICE_DISCLOSURES")
+            or os.environ.get("FORCE_RUN") == "true"):
+        return False
+    health = latest_health()
+    return health.get("last_success") == TODAY and not health.get("active_issues")
+
+
 def run_monitor() -> int:
+    if skip_backup_run():
+        print(f"✅ 오늘({TODAY}) 이미 정상 완료된 실행이 있어 예비 실행을 건너뜁니다.")
+        return 0
     SOURCE_STATS.clear()
     health = read_json(HEALTH_PATH, {})
     # 깨진 전송/변동 이력을 비우고 덮어쓰지 않는다.
