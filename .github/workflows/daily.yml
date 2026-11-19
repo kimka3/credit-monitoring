@@ -4,6 +4,12 @@ on:
   # Vultr systemd timer가 한국시간 월~금 08:27에 호출한다.
   # GitHub schedule은 장시간 지연될 수 있어 사용하지 않는다.
   workflow_dispatch:        # Vultr 및 수동 실행
+    inputs:
+      nice_watch_snapshot:
+        description: '수동 장애 복구 전용: 검증할 ops/recovery/ 아래 NICE Watch 원본 JSON 파일명'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: write        # 전송 이력(state/sent.json) 커밋에 필요
@@ -37,7 +43,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python credit_monitor_daily.py
+          NICE_WATCH_SNAPSHOT: ${{ inputs.nice_watch_snapshot }}
+        run: |
+          if [ -n "$NICE_WATCH_SNAPSHOT" ]; then
+            python ops/recover_nice_watch.py "$NICE_WATCH_SNAPSHOT"
+          else
+            python credit_monitor_daily.py
+          fi
 
       # 전송에 성공한 건만 이력에 쌓인다. 이걸 커밋해 둬야 내일 실행에서
       # 같은 건이 다시 발송되지 않는다. 실행이 실패했어도 그때까지 보낸
