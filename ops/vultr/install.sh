@@ -6,7 +6,7 @@ if (( EUID != 0 )); then
   exit 1
 fi
 
-for command in curl systemctl install; do
+for command in curl systemctl install python3; do
   if ! command -v "$command" >/dev/null 2>&1; then
     printf 'Required command is missing: %s\n' "$command" >&2
     exit 1
@@ -15,6 +15,9 @@ done
 
 source_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 token="${GITHUB_TOKEN:-}"
+if [[ -z "$token" && -f /etc/credit-monitoring.env ]]; then
+  token="$(sed -n 's/^GITHUB_TOKEN=//p' /etc/credit-monitoring.env)"
+fi
 if [[ -z "$token" ]]; then
   if [[ ! -t 0 ]]; then
     printf 'Set GITHUB_TOKEN or run interactively to enter it.\n' >&2
@@ -33,6 +36,7 @@ trap 'rm -f -- "$temp_env"' EXIT
 printf 'GITHUB_TOKEN=%s\n' "$token" >"$temp_env"
 
 install -d -m 0755 /usr/local/libexec/credit-monitoring
+install -m 0644 "$source_dir/nice_feed.py" /usr/local/libexec/credit-monitoring/nice_feed.py
 install -m 0755 "$source_dir/trigger-credit-monitor.sh" \
   /usr/local/libexec/credit-monitoring/trigger-credit-monitor.sh
 install -m 0644 "$source_dir/credit-monitor-trigger.service" \

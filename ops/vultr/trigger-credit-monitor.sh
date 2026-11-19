@@ -28,6 +28,9 @@ request() {
   local status
   local -a curl_args=(--config -)
   local null_device="/dev/null"
+  if [[ -n "$data" ]]; then
+    curl_args+=(--data-binary "$data")
+  fi
 
   if [[ "$(uname -s)" == MINGW* ]]; then
     curl_args+=(--ssl-no-revoke)
@@ -42,9 +45,6 @@ request() {
     printf 'header = "X-GitHub-Api-Version: 2022-11-28"\n'
     printf 'header = "User-Agent: credit-monitoring-vultr-trigger"\n'
     printf 'header = "Authorization: Bearer %s"\n' "$GITHUB_TOKEN"
-    if [[ -n "$data" ]]; then
-      printf 'data = "%s"\n' "$data"
-    fi
     printf 'output = "%s"\n' "$null_device"
     printf 'silent\nshow-error\n'
     printf 'write-out = "%%{http_code}"\n'
@@ -90,7 +90,14 @@ case "${1:-}" in
     ;;
 esac
 
-if ! status="$(request POST "${API_ROOT}/actions/workflows/${WORKFLOW}/dispatches" '{\"ref\":\"main\"}')"; then
+payload='{"ref":"main"}'
+collector="$(dirname -- "${BASH_SOURCE[0]}")/nice_feed.py"
+if bundle="$(env -u GITHUB_TOKEN python3 "$collector")" && [[ "$bundle" =~ ^[a-zA-Z0-9+/]+=*$ ]]; then
+  printf -v payload '{"ref":"main","inputs":{"nice_disclosures":"%s"}}' "$bundle"
+else
+  log "NICE collection failed on timer host; dispatching for direct collection and alerting"
+fi
+if ! status="$(request POST "${API_ROOT}/actions/workflows/${WORKFLOW}/dispatches" "$payload")"; then
   log "GitHub workflow dispatch failed because the API request could not be completed"
   exit 1
 fi

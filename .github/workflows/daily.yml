@@ -5,6 +5,10 @@ on:
   # GitHub schedule은 장시간 지연될 수 있어 사용하지 않는다.
   workflow_dispatch:        # Vultr 및 수동 실행
     inputs:
+      nice_disclosures:
+        description: '예약 실행 서버가 이번 실행에서 수집한 NICE 공시 4종'
+        required: false
+        type: string
       nice_watch_snapshot:
         description: '수동 장애 복구 전용: 검증할 ops/recovery/ 아래 NICE Watch 원본 JSON 파일명'
         required: false
@@ -44,6 +48,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           NICE_WATCH_SNAPSHOT: ${{ inputs.nice_watch_snapshot }}
+          NICE_DISCLOSURES: ${{ inputs.nice_disclosures }}
         run: |
           if [ -n "$NICE_WATCH_SNAPSHOT" ]; then
             python ops/recover_nice_watch.py "$NICE_WATCH_SNAPSHOT"

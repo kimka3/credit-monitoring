@@ -792,13 +792,23 @@ def scrape_all():
     session = requests.Session()
     session.headers.update(HEADERS)
     all_data, errors = [], []
+    nice_session = session
+    bundle = os.environ.get("NICE_DISCLOSURES", "")
+    if bundle:
+        from nice_feed import DisclosureSession
+        try:
+            nice_session = DisclosureSession(bundle, session, NOW, NICE_FROM, TODAY, NICE_LIST_URL, NICE_WATCH_URL)
+            print("  NICE 원본 4종 수신: 예약 실행 서버에서 수집")
+        except (ValueError, KeyError, TypeError, OSError, EOFError) as exc:
+            print(f"  NICE 서버 원본 검증 실패, 직접 조회: {exc}")
 
     for fetcher in (fetch_kr, fetch_kis, fetch_nice, fetch_nice_sf, fetch_nice_exposure,
                     fetch_kr_watch, fetch_nice_watch):
         last_err = None
         for attempt in range(RETRIES):
             try:
-                all_data.extend(fetcher(session))
+                source_session = nice_session if fetcher in (fetch_nice, fetch_nice_sf, fetch_nice_exposure, fetch_nice_watch) else session
+                all_data.extend(fetcher(source_session))
                 last_err = None
                 break
             except Exception as exc:

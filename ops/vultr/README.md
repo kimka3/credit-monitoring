@@ -2,7 +2,9 @@
 
 GitHub의 `schedule` 이벤트 지연을 피하기 위해 Vultr의 systemd timer가 한국시간
 월~금 오전 8시 27분에 `daily.yml`의 `workflow_dispatch`를 호출한다. 실제
-모니터링, 텔레그램 전송, 상태 커밋과 Pages 배포는 계속 GitHub Actions에서 한다.
+Vultr에서 NICE 일반·SF·유동화익스포저·Watch 공시 표를 읽어 호출에 포함한다.
+GitHub Actions는 같은 파서로 원본 건수와 변동을 검증한 뒤 텔레그램 발송 및 Pages 배포를 수행한다.
+서버 수집이 실패하면 기존 직접 조회와 장애 알림이 동작한다.
 
 Fine-grained personal access token은 `credit-monitoring` 저장소를 선택하고
 `Actions: Read and write` 권한만 부여한다. 토큰은 `/etc/credit-monitoring.env`에
@@ -12,6 +14,15 @@ Fine-grained personal access token은 `credit-monitoring` 저장소를 선택하
 git clone https://github.com/kimka3/credit-monitoring.git
 cd credit-monitoring
 sudo bash ops/vultr/install.sh
+```
+
+기존 설치를 갱신할 때는 서버의 저장소 디렉터리에서 다음 명령을 실행한다.
+설치 프로그램은 기존 토큰을 재사용한다. 마지막 명령은 운영 모니터를 한 차례 호출한다.
+
+```bash
+git pull --ff-only
+sudo bash ops/vultr/install.sh
+sudo systemd-run --wait --collect --property=EnvironmentFile=/etc/credit-monitoring.env /usr/local/libexec/credit-monitoring/trigger-credit-monitor.sh --force
 ```
 
 ```bash
