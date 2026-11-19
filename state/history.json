@@ -199,6 +199,23 @@
   "source_url": "https://www.nicerating.com/disclosure/totalWatchList.do",
   "watch_reason": "거래참가자의 신용도 변화(SF)"
  },
+ "NICE신용평가|플라잉메가캐리어제일차(주)|2026.11.18||A3|||watch|ABSTB": {
+  "company": "플라잉메가캐리어제일차(주)",
+  "date": "2026.11.18",
+  "eval_type": "Watch 등록",
+  "event_type": "watch_registration",
+  "first_seen": "2026-11-19",
+  "instrument": "ABSTB",
+  "kind": "검토변경",
+  "new_outlook": "",
+  "new_rating": "A3",
+  "new_watch": "상향검토",
+  "prev_outlook": "",
+  "prev_rating": "",
+  "source": "NICE신용평가",
+  "source_url": "https://www.nicerating.com/disclosure/totalWatchList.do",
+  "watch_reason": "거래참가자의 신용도 변화(SF)"
+ },
  "한국기업평가|(주)애큐온캐피탈|2026.10.01|A2|A2||": {
   "company": "(주)애큐온캐피탈",
   "date": "2026.10.01",
