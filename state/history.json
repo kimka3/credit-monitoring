@@ -394,6 +394,23 @@
   "source_url": "https://www.korearatings.com/cms/frCmnCon/index.do?MENU_ID=420",
   "watch_reason": ""
  },
+ "한국기업평가|베스트에이제이차(주)|2026.11.20|BBB-|BB+||": {
+  "company": "베스트에이제이차(주)",
+  "date": "2026.11.20",
+  "eval_type": "수시",
+  "first_seen": "2026-11-23",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "BB+",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=pWzCNqLSe2vfx@CC7GYKC4rUsLH4R3QLAo6txz1bRPw=&encSvcSeqNo=1WtSyNKCLQ7a5BjhWrJU@g==&evalNo=3&rptNo=03&fileName=&compCd=236085&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "BBB-",
+  "source": "한국기업평가"
+ },
  "한국기업평가|신보2024제11차유동화전문(유)|2026.09.11|C|D||": {
   "company": "신보2024제11차유동화전문(유)",
   "date": "2026.09.11",
@@ -477,6 +494,23 @@
   "prev_rating": "C",
   "source": "한국기업평가"
  },
+ "한국기업평가|엔케이블루제일차(주)|2026.11.20|BBB-|BB+||": {
+  "company": "엔케이블루제일차(주)",
+  "date": "2026.11.20",
+  "eval_type": "수시",
+  "first_seen": "2026-11-23",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "BB+",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=xFh9RO.qSUgR2.vrh85x5sgU0SH7@Mu4XojKCCRBzIk=&encSvcSeqNo=8.fxSLKPtYQc5Ca8HYjIIw==&evalNo=3&rptNo=03&fileName=&compCd=239347&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "BBB-",
+  "source": "한국기업평가"
+ },
  "한국기업평가|패션그룹형지(주)|2026.09.10|B+|B-|부정적|부정적": {
   "company": "패션그룹형지(주)",
   "date": "2026.09.10",
@@ -492,6 +526,30 @@
   "prev_outlook": "부정적",
   "prev_rating": "B+",
   "source": "한국기업평가"
+ },
+ "한국신용평가|LG화학|2026.11.19|AA+|AA|부정적|안정적": {
+  "company": "LG화학",
+  "date": "2026.11.19",
+  "eval_type": "수시",
+  "first_seen": "2026-11-23",
+  "kind": "등급하향",
+  "new_outlook": "안정적",
+  "new_rating": "AA",
+  "pdf": {
+   "fields": {
+    "fileName": "rs20261120-28.pdf",
+    "fileTitle": "LG화학",
+    "freeYn": "",
+    "gubun": "2",
+    "menuCd": "R8",
+    "writedate": "20261119"
+   },
+   "method": "post",
+   "url": "https://www.kisrating.com/fileDown.do"
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "AA+",
+  "source": "한국신용평가"
  },
  "한국신용평가|다올랩터제오차|2026.10.30|A2 (sf)|A2- (sf)||": {
   "company": "다올랩터제오차",
