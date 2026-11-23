@@ -118,6 +118,35 @@
   "prev_rating": "A-",
   "source": "NICE신용평가"
  },
+ "NICE신용평가|(주)엔켐|2026.11.20|BB|BB-↓|Negative|": {
+  "company": "(주)엔켐",
+  "date": "2026.11.20",
+  "eval_type": "수시",
+  "first_seen": "2026-11-24",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "BB-↓",
+  "prev_outlook": "Negative",
+  "prev_rating": "BB",
+  "source": "NICE신용평가"
+ },
+ "NICE신용평가|(주)엔켐|2026.11.20||BB-|||watch|CB": {
+  "company": "(주)엔켐",
+  "date": "2026.11.20",
+  "eval_type": "Watch 등록",
+  "event_type": "watch_registration",
+  "first_seen": "2026-11-24",
+  "instrument": "CB",
+  "kind": "검토변경",
+  "new_outlook": "",
+  "new_rating": "BB-",
+  "new_watch": "하향검토",
+  "prev_outlook": "",
+  "prev_rating": "",
+  "source": "NICE신용평가",
+  "source_url": "https://www.nicerating.com/disclosure/totalWatchList.do",
+  "watch_reason": "주요 이벤트(소송, 분식, 상폐 등) 발생"
+ },
  "NICE신용평가|(주)윌비스|2026.09.04|CCC↓|D||": {
   "company": "(주)윌비스",
   "date": "2026.09.04",
