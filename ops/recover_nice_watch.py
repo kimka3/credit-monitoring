@@ -5,6 +5,7 @@ collection warnings or advance the last successful monitoring date.
 """
 import hashlib
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -12,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import credit_monitor_daily as m
 from monitor_checks import IntegrityError, verify_persisted
+from nice_feed import DisclosureSession
 
 
 def snapshot_rows(snapshot, now):
@@ -35,7 +37,21 @@ def snapshot_rows(snapshot, now):
 
 
 def recover(snapshot):
-    rows = snapshot_rows(snapshot, datetime.now(timezone.utc))
+    return recover_rows(snapshot_rows(snapshot, datetime.now(timezone.utc)))
+
+
+def recover_bundle(encoded):
+    with m.requests.Session() as live:
+        live.headers.update(m.HEADERS)
+        source = DisclosureSession(encoded, live, m.NOW, m.NICE_FROM, m.TODAY,
+                                   m.NICE_LIST_URL, m.NICE_WATCH_URL)
+        rows = []
+        for fetch in (m.fetch_nice, m.fetch_nice_sf, m.fetch_nice_exposure, m.fetch_nice_watch):
+            rows.extend(fetch(source))
+    return recover_rows(rows)
+
+
+def recover_rows(rows):
     state, history = m.load_state(), m.load_history()
     health = m.read_json(m.HEALTH_PATH, {})
     issues = list(health.get('active_issues', {}).values())
@@ -64,6 +80,8 @@ def recover(snapshot):
 
 
 if __name__ == '__main__':
+    if sys.argv[1:] == ['--bundle']:
+        sys.exit(recover_bundle(os.environ['NICE_DISCLOSURES']))
     if len(sys.argv) != 2 or Path(sys.argv[1]).name != sys.argv[1] or not sys.argv[1].endswith('.json'):
         raise SystemExit('ops/recovery/ 아래 JSON 파일명 하나를 지정하세요')
     path = Path(__file__).resolve().parent / 'recovery' / sys.argv[1]

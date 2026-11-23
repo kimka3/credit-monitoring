@@ -799,7 +799,7 @@ def scrape_all():
         from nice_feed import DisclosureSession
         try:
             nice_session = DisclosureSession(bundle, session, NOW, NICE_FROM, TODAY, NICE_LIST_URL, NICE_WATCH_URL)
-            print("  NICE 원본 4종 수신: 예약 실행 서버에서 수집")
+            print("  NICE 원본 4종 수신: 워크플로 호출 시 전달된 공시 표")
         except (ValueError, KeyError, TypeError, OSError, EOFError) as exc:
             print(f"  NICE 서버 원본 검증 실패, 직접 조회: {exc}")
 

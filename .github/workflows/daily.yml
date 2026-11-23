@@ -15,6 +15,11 @@ on:
         required: false
         default: false
         type: boolean
+      nice_backfill_only:
+        description: '수동 보충만 실행 (검증된 NICE 원본 4종 필요, 자동 수집 경고 유지)'
+        required: false
+        default: false
+        type: boolean
       nice_watch_snapshot:
         description: '수동 장애 복구 전용: 검증할 ops/recovery/ 아래 NICE Watch 원본 JSON 파일명'
         required: false
@@ -55,9 +60,12 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           NICE_WATCH_SNAPSHOT: ${{ inputs.nice_watch_snapshot }}
           NICE_DISCLOSURES: ${{ inputs.nice_disclosures }}
+          NICE_BACKFILL_ONLY: ${{ inputs.nice_backfill_only }}
           FORCE_RUN: ${{ inputs.force_run }}
         run: |
-          if [ -n "$NICE_WATCH_SNAPSHOT" ]; then
+          if [ "$NICE_BACKFILL_ONLY" = "true" ]; then
+            python ops/recover_nice_watch.py --bundle
+          elif [ -n "$NICE_WATCH_SNAPSHOT" ]; then
             python ops/recover_nice_watch.py "$NICE_WATCH_SNAPSHOT"
           else
             python credit_monitor_daily.py

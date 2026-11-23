@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import credit_monitor_daily as m
 from monitor_checks import IntegrityError, write_json
-from ops.recover_nice_watch import recover, snapshot_rows
+from ops.recover_nice_watch import recover, recover_bundle, snapshot_rows
 from test_watch import NICE
 
 
@@ -18,6 +18,21 @@ def snapshot(now):
 
 
 class NiceRecoveryTests(unittest.TestCase):
+    def test_bundle_backfill_requires_all_four_sources_before_delivery(self):
+        rating = {'company': 'issuer', 'kind': '등급하향'}
+        watch = {'company': 'issuer', 'kind': '검토변경'}
+        with patch('ops.recover_nice_watch.DisclosureSession'), \
+             patch.object(m, 'fetch_nice', return_value=[rating]), \
+             patch.object(m, 'fetch_nice_sf', return_value=[]), \
+             patch.object(m, 'fetch_nice_exposure', return_value=[]), \
+             patch.object(m, 'fetch_nice_watch', side_effect=[ValueError('bad table'), [watch]]), \
+             patch('ops.recover_nice_watch.recover_rows') as deliver:
+            with self.assertRaises(ValueError):
+                recover_bundle('test')
+            deliver.assert_not_called()
+            recover_bundle('test')
+            deliver.assert_called_once_with([rating, watch])
+
     def test_stale_future_tampered_and_unofficial_snapshots_rejected(self):
         now = datetime.now(timezone.utc)
         cases = [snapshot(now - timedelta(hours=25)), snapshot(now + timedelta(minutes=5)),
