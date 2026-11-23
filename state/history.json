@@ -337,6 +337,40 @@
   "prev_rating": "C",
   "source": "한국기업평가"
  },
+ "한국기업평가|디비엠비피제칠차(주)|2026.11.23|A2-|A2||": {
+  "company": "디비엠비피제칠차(주)",
+  "date": "2026.11.23",
+  "eval_type": "수시",
+  "first_seen": "2026-11-24",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=D3Ex5.m7fAxDSc3jEna0wk5xj83jGph@xE494eDx3Vk=&encSvcSeqNo=rt.v1e5NoVi8KIEOf@.89w==&evalNo=2&rptNo=03&fileName=&compCd=234838&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "A2-",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|디알제십구차(주)|2026.11.23|A2-|A2||": {
+  "company": "디알제십구차(주)",
+  "date": "2026.11.23",
+  "eval_type": "수시",
+  "first_seen": "2026-11-24",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=8BUEb@xjL1MCWrtzVPFhJllD1lcvyYznw7fqgWHTR1s=&encSvcSeqNo=oBkVBQg3xygGutGJh7nzvA==&evalNo=2&rptNo=03&fileName=&compCd=229748&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "A2-",
+  "source": "한국기업평가"
+ },
  "한국기업평가|롯데손해보험(주)|2026.10.13|A-|A-|부정적|": {
   "company": "롯데손해보험(주)",
   "date": "2026.10.13",
@@ -525,6 +559,40 @@
   },
   "prev_outlook": "부정적",
   "prev_rating": "B+",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|한화오션(주)|2026.11.23|A-|A|긍정적|안정적": {
+  "company": "한화오션(주)",
+  "date": "2026.11.23",
+  "eval_type": "수시",
+  "first_seen": "2026-11-24",
+  "kind": "등급상향",
+  "new_outlook": "안정적",
+  "new_rating": "A",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=xBMnOVtwyUeF0t76CRFk6@emjkYMvwETXhOK8ib64iw=&encSvcSeqNo=Jw3zGo80AE4u5cijDRuuOA==&evalNo=5&rptNo=03&fileName=&compCd=300141&compNm="
+  },
+  "prev_outlook": "긍정적",
+  "prev_rating": "A-",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|한화오션(주)|2026.11.23|A2-|A2||": {
+  "company": "한화오션(주)",
+  "date": "2026.11.23",
+  "eval_type": "정기",
+  "first_seen": "2026-11-24",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=xBMnOVtwyUeF0t76CRFk6@emjkYMvwETXhOK8ib64iw=&encSvcSeqNo=9OoLMqLR4.KE8vdeWTeeVw==&evalNo=2&rptNo=03&fileName=&compCd=300141&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "A2-",
   "source": "한국기업평가"
  },
  "한국신용평가|LG화학|2026.11.19|AA+|AA|부정적|안정적": {

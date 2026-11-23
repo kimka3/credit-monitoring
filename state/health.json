@@ -1,24 +1,23 @@
 {
  "active_issues": {
-  "01ed4699f5845a0e091b": "fetch_nice: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-23&cmpCd=&strDate=2026-10-24&endDate=2026-11-23&ratingGubn=RO&searchType=0",
   "20c56af836449c3c5879": "fetch_nice_watch: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/totalWatchList.do",
-  "5110d0bb81e990e78a1b": "fetch_nice_exposure: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-23&cmpCd=&strDate=2026-10-24&endDate=2026-11-23&ratingGubn=RO&searchType=7",
+  "8b9a89af1b7629ad5544": "fetch_nice_sf: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-24&cmpCd=&strDate=2026-10-25&endDate=2026-11-24&ratingGubn=RO&searchType=6",
   "8e5af89da3e076861607": "NICE SF: 수집 검증 결과 미완료",
   "b7229f4b9cfb72e386d2": "NICE신용평가: 수집 검증 결과 미완료",
-  "d0055a349fda2fa2777f": "보충조회에서 미발송 공시 발견 1건 (지연 공시/누락 가능): LG화학 [2026.11.19]",
-  "d1adfb51d092080e1731": "fetch_nice_sf: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-23&cmpCd=&strDate=2026-10-24&endDate=2026-11-23&ratingGubn=RO&searchType=6",
   "d7ce49381ee093d908ef": "NICE Watch: 수집 검증 결과 미완료",
+  "eaa2e602e7ea067cf00a": "fetch_nice_exposure: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-24&cmpCd=&strDate=2026-10-25&endDate=2026-11-24&ratingGubn=RO&searchType=7",
+  "ec8631a4567cc0227905": "fetch_nice: HTTPError: 400 Client Error: Bad Request for url: https://www.nicerating.com/disclosure/ratingChangeList.do?today=2026-11-24&cmpCd=&strDate=2026-10-25&endDate=2026-11-24&ratingGubn=RO&searchType=0",
   "ef9664662b7842c5eeed": "NICE 유동화익스포져: 수집 검증 결과 미완료"
  },
- "last_checked": "2026-11-23",
+ "last_checked": "2026-11-24",
  "last_success": "2026-11-20",
  "latest_sources": {
   "한국기업평가": {
-   "changes": 4,
-   "excluded_cancel": 74,
-   "latest_date": "2026.11.20",
-   "parsed": 604,
-   "raw": 678
+   "changes": 8,
+   "excluded_cancel": 76,
+   "latest_date": "2026.11.23",
+   "parsed": 635,
+   "raw": 711
   },
   "한국기업평가 Watch": {
    "changes": 0,
@@ -29,9 +28,9 @@
   "한국신용평가": {
    "changes": 6,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.20",
-   "parsed": 532,
-   "raw": 532
+   "latest_date": "2026.11.23",
+   "parsed": 563,
+   "raw": 563
   }
  },
  "sources": {
@@ -63,11 +62,11 @@
    "raw": 9
   },
   "한국기업평가": {
-   "changes": 4,
-   "excluded_cancel": 74,
-   "latest_date": "2026.11.20",
-   "parsed": 604,
-   "raw": 678
+   "changes": 8,
+   "excluded_cancel": 76,
+   "latest_date": "2026.11.23",
+   "parsed": 635,
+   "raw": 711
   },
   "한국기업평가 Watch": {
    "changes": 0,
@@ -78,9 +77,9 @@
   "한국신용평가": {
    "changes": 6,
    "excluded_cancel": 0,
-   "latest_date": "2026.11.20",
-   "parsed": 532,
-   "raw": 532
+   "latest_date": "2026.11.23",
+   "parsed": 563,
+   "raw": 563
   }
  }
 }
