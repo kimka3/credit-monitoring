@@ -147,6 +147,18 @@
   "source_url": "https://www.nicerating.com/disclosure/totalWatchList.do",
   "watch_reason": "주요 이벤트(소송, 분식, 상폐 등) 발생"
  },
+ "NICE신용평가|(주)엘지화학|2026.11.25|AA+|AA|Negative|Stable": {
+  "company": "(주)엘지화학",
+  "date": "2026.11.25",
+  "eval_type": "수시",
+  "first_seen": "2026-11-26",
+  "kind": "등급하향",
+  "new_outlook": "Stable",
+  "new_rating": "AA",
+  "prev_outlook": "Negative",
+  "prev_rating": "AA+",
+  "source": "NICE신용평가"
+ },
  "NICE신용평가|(주)윌비스|2026.09.04|CCC↓|D||": {
   "company": "(주)윌비스",
   "date": "2026.09.04",
@@ -193,6 +205,18 @@
   },
   "prev_outlook": "Positive",
   "prev_rating": "A",
+  "source": "NICE신용평가"
+ },
+ "NICE신용평가|에이치디현대오일뱅크(주)|2026.11.25|AA-|AA-|Stable|Positive": {
+  "company": "에이치디현대오일뱅크(주)",
+  "date": "2026.11.25",
+  "eval_type": "수시",
+  "first_seen": "2026-11-26",
+  "kind": "전망변경",
+  "new_outlook": "Positive",
+  "new_rating": "AA-",
+  "prev_outlook": "Stable",
+  "prev_rating": "AA-",
   "source": "NICE신용평가"
  },
  "NICE신용평가|일신건영(주)|2026.09.09|BB+|BB+|Positive|Stable": {
@@ -572,6 +596,23 @@
   },
   "prev_outlook": "",
   "prev_rating": "BBB-",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|파르나스호텔(주)|2026.11.25|A+|A+|안정적|긍정적": {
+  "company": "파르나스호텔(주)",
+  "date": "2026.11.25",
+  "eval_type": "수시",
+  "first_seen": "2026-11-26",
+  "kind": "전망변경",
+  "new_outlook": "긍정적",
+  "new_rating": "A+",
+  "new_watch": "",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=S6NtElUOcQvxcLcO1vnT9U1s.ZCwLxn8N0MbmMMkClg=&encSvcSeqNo=NocUZ3h@koc3Gs.4oHOU0A==&evalNo=4&rptNo=03&fileName=&compCd=605032&compNm="
+  },
+  "prev_outlook": "안정적",
+  "prev_rating": "A+",
   "source": "한국기업평가"
  },
  "한국기업평가|패션그룹형지(주)|2026.09.10|B+|B-|부정적|부정적": {
