@@ -74,15 +74,23 @@ class PcDispatchTests(unittest.TestCase):
 
 class ActionsSkipTests(unittest.TestCase):
     def run_monitor(self, env, health):
-        sentinel = RuntimeError('scrape started')
         with patch.dict(os.environ, env, clear=False), \
                 patch.object(m, 'latest_health', return_value=health), \
-                patch.object(m, 'scrape_all', side_effect=sentinel) as scrape:
-            try:
-                return m.run_monitor(), scrape
-            except RuntimeError as exc:
-                self.assertIs(exc, sentinel)
-                return 'ran', scrape
+                patch.object(m, 'main', return_value='ran') as scrape:
+            return m.cli(), scrape
+
+    def test_tests_inside_actions_are_not_skipped(self):
+        # 회귀 테스트는 Actions 안에서 main()/run_monitor()를 직접 부른다.
+        # 오늘 정상 완료 기록이 있어도 건너뛰면 안 된다 (2026-11-26 08:27 실패).
+        sentinel = RuntimeError('scrape started')
+        with patch.dict(os.environ, self.base_env(), clear=False), \
+                patch.object(m, 'latest_health',
+                             return_value={'last_success': m.TODAY, 'active_issues': {}}) as health, \
+                patch.object(m, 'scrape_all', side_effect=sentinel):
+            with self.assertRaises(RuntimeError) as ctx:
+                m.run_monitor()
+        self.assertIs(ctx.exception, sentinel)
+        health.assert_not_called()
 
     def base_env(self, **extra):
         env = {'GITHUB_ACTIONS': 'true', 'NICE_DISCLOSURES': '', 'FORCE_RUN': 'false'}

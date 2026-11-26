@@ -1243,9 +1243,6 @@ def skip_backup_run() -> bool:
 
 
 def run_monitor() -> int:
-    if skip_backup_run():
-        print(f"✅ 오늘({TODAY}) 이미 정상 완료된 실행이 있어 예비 실행을 건너뜁니다.")
-        return 0
     SOURCE_STATS.clear()
     health = read_json(HEALTH_PATH, {})
     # 깨진 전송/변동 이력을 비우고 덮어쓰지 않는다.
@@ -1360,5 +1357,14 @@ def main() -> int:
         return 1
 
 
+def cli() -> int:
+    """명령줄 실행 진입점. 예비 실행 건너뛰기는 여기서만 판단한다. main()에 두면
+    Actions 안에서 도는 회귀 테스트까지 건너뛰어 실패한다(2026-11-26)."""
+    if skip_backup_run():
+        print(f"✅ 오늘({TODAY}) 이미 정상 완료된 실행이 있어 예비 실행을 건너뜁니다.")
+        return 0
+    return main()
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(cli())
