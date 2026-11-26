@@ -191,6 +191,56 @@
   "prev_rating": "A",
   "source": "NICE신용평가"
  },
+ "NICE신용평가|디비엠비피제칠차(주)|2026.11.26|A2- (sf)|A2 (sf)|||instrument:SF": {
+  "company": "디비엠비피제칠차(주)",
+  "date": "2026.11.26",
+  "eval_type": "수시",
+  "first_seen": "2026-11-27",
+  "instrument": "SF",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2 (sf)",
+  "prev_outlook": "",
+  "prev_rating": "A2- (sf)",
+  "source": "NICE신용평가"
+ },
+ "NICE신용평가|디알제십구차(주)|2026.11.26|A2- (sf)|A2 (sf)|||instrument:SF": {
+  "company": "디알제십구차(주)",
+  "date": "2026.11.26",
+  "eval_type": "수시",
+  "first_seen": "2026-11-27",
+  "instrument": "SF",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2 (sf)",
+  "prev_outlook": "",
+  "prev_rating": "A2- (sf)",
+  "source": "NICE신용평가"
+ },
+ "NICE신용평가|삼성중공업(주)|2026.11.26|A-|A|Positive|Stable": {
+  "company": "삼성중공업(주)",
+  "date": "2026.11.26",
+  "eval_type": "수시",
+  "first_seen": "2026-11-27",
+  "kind": "등급상향",
+  "new_outlook": "Stable",
+  "new_rating": "A",
+  "prev_outlook": "Positive",
+  "prev_rating": "A-",
+  "source": "NICE신용평가"
+ },
+ "NICE신용평가|삼성중공업(주)|2026.11.26|A2-|A2||": {
+  "company": "삼성중공업(주)",
+  "date": "2026.11.26",
+  "eval_type": "정기",
+  "first_seen": "2026-11-27",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2",
+  "prev_outlook": "",
+  "prev_rating": "A2-",
+  "source": "NICE신용평가"
+ },
  "NICE신용평가|에이치디건설기계(주)|2026.11.09|A|A+|Positive|Stable": {
   "company": "에이치디건설기계(주)",
   "date": "2026.11.09",
@@ -269,6 +319,30 @@
   "source_url": "https://www.nicerating.com/disclosure/totalWatchList.do",
   "watch_reason": "거래참가자의 신용도 변화(SF)"
  },
+ "NICE신용평가|한화오션(주)|2026.11.26|A-|A|Positive|Stable": {
+  "company": "한화오션(주)",
+  "date": "2026.11.26",
+  "eval_type": "수시",
+  "first_seen": "2026-11-27",
+  "kind": "등급상향",
+  "new_outlook": "Stable",
+  "new_rating": "A",
+  "prev_outlook": "Positive",
+  "prev_rating": "A-",
+  "source": "NICE신용평가"
+ },
+ "NICE신용평가|한화오션(주)|2026.11.26|A2-|A2||": {
+  "company": "한화오션(주)",
+  "date": "2026.11.26",
+  "eval_type": "정기",
+  "first_seen": "2026-11-27",
+  "kind": "등급상향",
+  "new_outlook": "",
+  "new_rating": "A2",
+  "prev_outlook": "",
+  "prev_rating": "A2-",
+  "source": "NICE신용평가"
+ },
  "한국기업평가|(주)애큐온캐피탈|2026.10.01|A2|A2||": {
   "company": "(주)애큐온캐피탈",
   "date": "2026.10.01",
@@ -303,6 +377,44 @@
   },
   "prev_outlook": "안정적",
   "prev_rating": "A",
+  "source": "한국기업평가",
+  "source_url": "https://www.korearatings.com/cms/frCmnCon/index.do?MENU_ID=420",
+  "watch_reason": ""
+ },
+ "한국기업평가|(주)엔켐|2026.11.26|BB|B+|부정적|": {
+  "company": "(주)엔켐",
+  "date": "2026.11.26",
+  "eval_type": "수시",
+  "first_seen": "2026-11-27",
+  "kind": "등급하향",
+  "new_outlook": "",
+  "new_rating": "B+",
+  "new_watch": "하향검토",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=uiCB0hTOn6B2LZ9bAtMnhtTb1M7Gomi1SfVKsMs7j1Y=&encSvcSeqNo=fBcHORNwNsoE072GeKPtYQ==&evalNo=4&rptNo=03&fileName=&compCd=313750&compNm="
+  },
+  "prev_outlook": "부정적",
+  "prev_rating": "BB",
+  "source": "한국기업평가"
+ },
+ "한국기업평가|(주)엔켐|2026.11.26||B+|||watch|전환사채": {
+  "company": "(주)엔켐",
+  "date": "2026.11.26",
+  "eval_type": "Watch 등록",
+  "event_type": "watch_registration",
+  "first_seen": "2026-11-27",
+  "instrument": "전환사채",
+  "kind": "검토변경",
+  "new_outlook": "",
+  "new_rating": "B+",
+  "new_watch": "하향검토",
+  "pdf": {
+   "method": "get",
+   "url": "https://www.korearatings.com/ajaxa/fileCpnt/reportFileDown.do?dumm=asdf&encFileNm=uiCB0hTOn6B2LZ9bAtMnhtTb1M7Gomi1SfVKsMs7j1Y=&encSvcSeqNo=fBcHORNwNsoE072GeKPtYQ==&evalNo=4&rptNo=03&fileName=&compCd=313750&compNm="
+  },
+  "prev_outlook": "",
+  "prev_rating": "",
   "source": "한국기업평가",
   "source_url": "https://www.korearatings.com/cms/frCmnCon/index.do?MENU_ID=420",
   "watch_reason": ""
